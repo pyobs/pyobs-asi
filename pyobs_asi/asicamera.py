@@ -216,6 +216,10 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
         hdu.header['DATAMAX'] = (float(np.max(data)), 'Maximum data value')
         hdu.header['DATAMEAN'] = (float(np.mean(data)), 'Mean data value')
 
+        # pixels
+        hdu.header['DET-PIXL'] = (self._camera_info['PixelSize'] / 1000., 'Size of detector pixels (square) [mm]')
+        hdu.header['DET-GAIN'] = (self._camera_info['ElecPerASU'], 'Detector gain [e-/ADU]')
+
         # biassec/trimsec
         self.set_biassec_trimsec(hdu.header, *self._window)
 

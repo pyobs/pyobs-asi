@@ -218,7 +218,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
 
         # pixels
         hdu.header['DET-PIXL'] = (self._camera_info['PixelSize'] / 1000., 'Size of detector pixels (square) [mm]')
-        hdu.header['DET-GAIN'] = (self._camera_info['ElecPerASU'], 'Detector gain [e-/ADU]')
+        hdu.header['DET-GAIN'] = (self._camera_info['ElecPerADU'], 'Detector gain [e-/ADU]')
 
         # biassec/trimsec
         self.set_biassec_trimsec(hdu.header, *self._window)

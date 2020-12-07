@@ -7,7 +7,7 @@ from astropy.io import fits
 import numpy as np
 import zwoasi as asi
 
-from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning
+from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
 from pyobs.modules.camera.basecamera import BaseCamera
 
 
@@ -56,12 +56,14 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
         # open driver
         self._camera = asi.Camera(camera_id)
         self._camera_info = self._camera.get_camera_property()
+        log.info('Camera info:')
+        for key, val in self._camera_info.items():
+            log.info('  - %s: %s', key, val)
 
         # Set some sensible defaults. They will need adjusting depending upon
         # the sensitivity, lens and lighting conditions used.
         self._camera.disable_dark_subtract()
         self._camera.set_control_value(asi.ASI_GAIN, 150)
-        self._camera.set_control_value(asi.ASI_EXPOSURE, 30000)
         self._camera.set_control_value(asi.ASI_WB_B, 99)
         self._camera.set_control_value(asi.ASI_WB_R, 75)
         self._camera.set_control_value(asi.ASI_GAMMA, 50)
@@ -237,4 +239,74 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
         pass
 
 
-__all__ = ['AsiCamera']
+class AsiCoolCamera(AsiCamera, ICooling):
+    """A pyobs module for ASI cameras with cooling."""
+
+    def __init__(self, setpoint: int = -20, *args, **kwargs):
+        """Initializes a new AsiCoolCamera.
+
+        Args:
+            setpoint: Cooling temperature setpoint.
+        """
+        AsiCamera.__init__(self, *args, **kwargs)
+
+        # variables
+        self._temp_setpoint = setpoint
+
+    def open(self):
+        """Open module."""
+        AsiCamera.open(self)
+
+        # no cooling support?
+        if not self._camera_info['IsCoolerCam']:
+            raise ValueError('Camera has no support for cooling.')
+
+        # activate cooling
+        self.set_cooling(True, self._temp_setpoint)
+
+    def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float):
+        """Returns the current status for the cooling.
+
+        Returns:
+            Tuple containing:
+                Enabled (bool):         Whether the cooling is enabled
+                SetPoint (float):       Setpoint for the cooling in celsius.
+                Power (float):          Current cooling power in percent or None.
+        """
+        enabled = self._camera.get_control_value(asi.ASI_COOLER_ON)[0]
+        temp = self._camera.get_control_value(asi.ASI_TARGET_TEMP)[0]
+        power = self._camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0]
+        return enabled, temp, power
+
+    def get_temperatures(self, *args, **kwargs) -> dict:
+        """Returns all temperatures measured by this module.
+
+        Returns:
+            Dict containing temperatures.
+        """
+        return {
+            'CCD': self._camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.
+        }
+
+    def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
+        """Enables/disables cooling and sets setpoint.
+
+        Args:
+            enabled: Enable or disable cooling.
+            setpoint: Setpoint in celsius for the cooling.
+
+        Raises:
+            ValueError: If cooling could not be set.
+        """
+
+        # log
+        if enabled:
+            log.info('Enabling cooling with a setpoint of %.2f°C...', setpoint)
+            self._camera.set_control_value(asi.ASI_TARGET_TEMP, int(setpoint))
+            self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
+        else:
+            log.info('Disabling cooling...')
+            self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
+
+
+__all__ = ['AsiCamera', 'AsiCoolCamera']

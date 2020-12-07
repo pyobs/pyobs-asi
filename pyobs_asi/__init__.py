@@ -1,1 +1,1 @@
-from .asicamera import AsiCamera
+from .asicamera import AsiCamera, AsiCoolCamera

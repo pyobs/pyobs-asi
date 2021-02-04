@@ -141,11 +141,11 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
         self._binning = x
         log.info('Setting binning to %dx%d...', x, x)
 
-    def _expose(self, exposure_time: int, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
-            exposure_time: The requested exposure time in ms.
+            exposure_time: The requested exposure time in s.
             open_shutter: Whether or not to open the shutter.
             abort_event: Event that gets triggered when exposure should be aborted.
 
@@ -162,13 +162,13 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
         self._camera.set_roi(int(self._window[0]), int(self._window[1]), width, height,
                              self._binning, asi.ASI_IMG_RAW16)
 
-        # set some stuff
+        # set status and exposure time in ms
         self._change_exposure_status(ICamera.ExposureStatus.EXPOSING)
-        self._camera.set_control_value(asi.ASI_EXPOSURE, exposure_time)
+        self._camera.set_control_value(asi.ASI_EXPOSURE, int(exposure_time * 1000))
 
         # get date obs
         log.info('Starting exposure with %s shutter for %.2f seconds...',
-                 'open' if open_shutter else 'closed', exposure_time / 1000.)
+                 'open' if open_shutter else 'closed', exposure_time)
         date_obs = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
 
         # do exposure

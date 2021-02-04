@@ -201,7 +201,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
         # create FITS image and set header
         hdu = fits.PrimaryHDU(data)
         hdu.header['DATE-OBS'] = (date_obs, 'Date and time of start of exposure')
-        hdu.header['EXPTIME'] = (exposure_time / 1000., 'Exposure time [s]')
+        hdu.header['EXPTIME'] = (exposure_time, 'Exposure time [s]')
 
         # instrument and detector
         hdu.header['INSTRUME'] = (self._camera_name, 'Name of instrument')

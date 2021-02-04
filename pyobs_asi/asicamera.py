@@ -173,6 +173,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
 
         # do exposure
         self._camera.start_exposure()
+        self.closing.wait(0.01)
 
         # wait for image
         while self._camera.get_exposure_status() == asi.ASI_EXP_WORKING:

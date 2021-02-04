@@ -164,7 +164,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
 
         # set status and exposure time in ms
         self._change_exposure_status(ICamera.ExposureStatus.EXPOSING)
-        self._camera.set_control_value(asi.ASI_EXPOSURE, int(exposure_time * 1000))
+        self._camera.set_control_value(asi.ASI_EXPOSURE, int(exposure_time * 1e6))
 
         # get date obs
         log.info('Starting exposure with %s shutter for %.2f seconds...',

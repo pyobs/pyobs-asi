@@ -16,9 +16,9 @@ log = logging.getLogger(__name__)
 
 # map of image formats
 FORMATS = {
-    ICameraMode.Mode.INT8: asi.ASI_IMG_RAW8,
-    ICameraMode.Mode.INT16: asi.ASI_IMG_RAW16,
-    ICameraMode.Mode.RGB24: asi.ASI_IMG_RGB24
+    ImageFormat.INT8: asi.ASI_IMG_RAW8,
+    ImageFormat.INT16: asi.ASI_IMG_RAW16,
+    ImageFormat.RGB24: asi.ASI_IMG_RGB24
 }
 
 

@@ -217,7 +217,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
             shape = [whbi[1], whbi[0]]
             data = np.frombuffer(buffer, dtype=np.uint16).reshape(shape)
         elif image_format == asi.ASI_IMG_RGB24:
-            shape = [whbi[1], whbi[0], 3]
+            shape = [3, whbi[1], whbi[0]]
             data = np.frombuffer(buffer, dtype=np.uint8).reshape(shape)
         else:
             raise ValueError('Unknown image format.')

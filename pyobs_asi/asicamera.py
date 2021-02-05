@@ -212,7 +212,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         if image_format == asi.ASI_IMG_RAW8:
             shape = [whbi[1], whbi[0]]
             data = np.frombuffer(buffer, dtype=np.uint16).reshape(shape)
-        elif image_format == asi.ASI_IMG_RAW8:
+        elif image_format == asi.ASI_IMG_RAW16:
             shape = [whbi[1], whbi[0]]
             data = np.frombuffer(buffer, dtype=np.uint8).reshape(shape)
         elif image_format == asi.ASI_IMG_RGB24:

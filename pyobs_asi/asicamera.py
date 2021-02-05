@@ -7,7 +7,7 @@ from astropy.io import fits
 import numpy as np
 import zwoasi as asi
 
-from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling, ICameraMode
+from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling, IImageFormat
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat
 
@@ -22,7 +22,7 @@ FORMATS = {
 }
 
 
-class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICameraMode):
+class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat):
     """A pyobs module for ASI cameras."""
 
     def __init__(self, camera: str, sdk: str = '/usr/local/lib/libASICamera2.so', *args, **kwargs):

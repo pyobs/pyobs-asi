@@ -7,14 +7,22 @@ from astropy.io import fits
 import numpy as np
 import zwoasi as asi
 
-from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling
+from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling, ICameraMode
 from pyobs.modules.camera.basecamera import BaseCamera
-
+from pyobs.utils.enums import ImageFormat
 
 log = logging.getLogger(__name__)
 
 
-class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
+# map of image formats
+FORMATS = {
+    ICameraMode.Mode.INT8: asi.ASI_IMG_RAW8,
+    ICameraMode.Mode.INT16: asi.ASI_IMG_RAW16,
+    ICameraMode.Mode.RGB24: asi.ASI_IMG_RGB24
+}
+
+
+class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, ICameraMode):
     """A pyobs module for ASI cameras."""
 
     def __init__(self, camera: str, sdk: str = '/usr/local/lib/libASICamera2.so', *args, **kwargs):
@@ -32,9 +40,10 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
         self._camera = None
         self._camera_info = None
 
-        # window and binning
+        # window and binning and mode
         self._window = None
         self._binning = None
+        self._image_format = ImageFormat.INT16
 
     def open(self):
         """Open module."""
@@ -153,6 +162,9 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
             The actual image.
         """
 
+        # get image format
+        image_format = FORMATS[self._image_format]
+
         # set window, divide width/height by binning
         width = int(math.floor(self._window[2]) / self._binning)
         height = int(math.floor(self._window[3]) / self._binning)
@@ -160,7 +172,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
                  self._window[2], self._window[3], width, height, self._binning, self._binning,
                  self._window[0], self._window[1])
         self._camera.set_roi(int(self._window[0]), int(self._window[1]), width, height,
-                             self._binning, asi.ASI_IMG_RAW16)
+                             self._binning, image_format)
 
         # set status and exposure time in ms
         self._change_exposure_status(ICamera.ExposureStatus.EXPOSING)
@@ -195,8 +207,19 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning):
         self._change_exposure_status(ICamera.ExposureStatus.READOUT)
         buffer = self._camera.get_data_after_exposure()
         whbi = self._camera.get_roi_format()
-        shape = [whbi[1], whbi[0]]
-        data = np.frombuffer(buffer, dtype=np.uint16).reshape(shape)
+
+        # decide on image format
+        if image_format == asi.ASI_IMG_RAW8:
+            shape = [whbi[1], whbi[0]]
+            data = np.frombuffer(buffer, dtype=np.uint16).reshape(shape)
+        elif image_format == asi.ASI_IMG_RAW8:
+            shape = [whbi[1], whbi[0]]
+            data = np.frombuffer(buffer, dtype=np.uint8).reshape(shape)
+        elif image_format == asi.ASI_IMG_RGB24:
+            shape = [whbi[1], whbi[0], 3]
+            data = np.frombuffer(buffer, dtype=np.uint8).reshape(shape)
+        else:
+            raise ValueError('Unknown image format.')
 
         # create FITS image and set header
         hdu = fits.PrimaryHDU(data)
@@ -308,6 +331,35 @@ class AsiCoolCamera(AsiCamera, ICooling):
         else:
             log.info('Disabling cooling...')
             self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
+
+    def set_image_format(self, format: ImageFormat, *args, **kwargs):
+        """Set the camera image format.
+
+        Args:
+            format: New image format.
+
+        Raises:
+            ValueError: If format could not be set.
+        """
+        if format not in FORMATS:
+            raise ValueError('Unsupported image format.')
+        self._image_format = format
+
+    def get_image_format(self, *args, **kwargs) -> ImageFormat:
+        """Returns the camera image format.
+
+        Returns:
+            Current image format.
+        """
+        return self._image_format
+
+    def list_image_formats(self, *args, **kwargs) -> list:
+        """List available image formats.
+
+        Returns:
+            List of available image formats.
+        """
+        return list(FORMATS.keys())
 
 
 __all__ = ['AsiCamera', 'AsiCoolCamera']

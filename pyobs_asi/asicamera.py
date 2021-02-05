@@ -10,6 +10,7 @@ import zwoasi as asi
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling, IImageFormat
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat
+from pyobs.utils.images import Image
 
 log = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         self._binning = x
         log.info('Setting binning to %dx%d...', x, x)
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> fits.PrimaryHDU:
+    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -222,37 +223,37 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
             raise ValueError('Unknown image format.')
 
         # create FITS image and set header
-        hdu = fits.PrimaryHDU(data)
-        hdu.header['DATE-OBS'] = (date_obs, 'Date and time of start of exposure')
-        hdu.header['EXPTIME'] = (exposure_time, 'Exposure time [s]')
+        image = Image(data)
+        image.header['DATE-OBS'] = (date_obs, 'Date and time of start of exposure')
+        image.header['EXPTIME'] = (exposure_time, 'Exposure time [s]')
 
         # instrument and detector
-        hdu.header['INSTRUME'] = (self._camera_name, 'Name of instrument')
+        image.header['INSTRUME'] = (self._camera_name, 'Name of instrument')
 
         # binning
-        hdu.header['XBINNING'] = hdu.header['DET-BIN1'] = (self._binning, 'Binning factor used on X axis')
-        hdu.header['YBINNING'] = hdu.header['DET-BIN2'] = (self._binning, 'Binning factor used on Y axis')
+        image.header['XBINNING'] = image.header['DET-BIN1'] = (self._binning, 'Binning factor used on X axis')
+        image.header['YBINNING'] = image.header['DET-BIN2'] = (self._binning, 'Binning factor used on Y axis')
 
         # window
-        hdu.header['XORGSUBF'] = (self._window[0], 'Subframe origin on X axis')
-        hdu.header['YORGSUBF'] = (self._window[1], 'Subframe origin on Y axis')
+        image.header['XORGSUBF'] = (self._window[0], 'Subframe origin on X axis')
+        image.header['YORGSUBF'] = (self._window[1], 'Subframe origin on Y axis')
 
         # statistics
-        hdu.header['DATAMIN'] = (float(np.min(data)), 'Minimum data value')
-        hdu.header['DATAMAX'] = (float(np.max(data)), 'Maximum data value')
-        hdu.header['DATAMEAN'] = (float(np.mean(data)), 'Mean data value')
+        image.header['DATAMIN'] = (float(np.min(data)), 'Minimum data value')
+        image.header['DATAMAX'] = (float(np.max(data)), 'Maximum data value')
+        image.header['DATAMEAN'] = (float(np.mean(data)), 'Mean data value')
 
         # pixels
-        hdu.header['DET-PIXL'] = (self._camera_info['PixelSize'] / 1000., 'Size of detector pixels (square) [mm]')
-        hdu.header['DET-GAIN'] = (self._camera_info['ElecPerADU'], 'Detector gain [e-/ADU]')
+        image.header['DET-PIXL'] = (self._camera_info['PixelSize'] / 1000., 'Size of detector pixels (square) [mm]')
+        image.header['DET-GAIN'] = (self._camera_info['ElecPerADU'], 'Detector gain [e-/ADU]')
 
         # biassec/trimsec
-        self.set_biassec_trimsec(hdu.header, *self._window)
+        self.set_biassec_trimsec(image.header, *self._window)
 
         # return FITS image
         log.info('Readout finished.')
         self._change_exposure_status(ICamera.ExposureStatus.IDLE)
-        return hdu
+        return image
 
     def _abort_exposure(self):
         """Abort the running exposure. Should be implemented by derived class.

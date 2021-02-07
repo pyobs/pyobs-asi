@@ -360,7 +360,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         Returns:
             List of available image formats.
         """
-        return list(FORMATS.keys())
+        return [f.value for f in FORMATS]
 
 
 __all__ = ['AsiCamera', 'AsiCoolCamera']

@@ -39,7 +39,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         self._camera_name = camera
         self._sdk_path = sdk
         self._camera = None
-        self._camera_info = None
+        self._camera_info = {}
 
         # window and binning and mode
         self._window = None
@@ -150,6 +150,14 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """
         self._binning = x
         log.info('Setting binning to %dx%d...', x, x)
+
+    def list_binnings(self, *args, **kwargs) -> list:
+        """List available binnings.
+
+        Returns:
+            List of available binnings.
+        """
+        return self._camera_info['SupportedBins'] if 'SupportedBins' in self._camera_info else []
 
     def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.

@@ -155,9 +155,14 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """List available binnings.
 
         Returns:
-            List of available binnings.
+            List of available binnings as (x, y) tuples.
         """
-        return self._camera_info['SupportedBins'] if 'SupportedBins' in self._camera_info else []
+
+        if 'SupportedBins' in self._camera_info:
+            # create list of tuples
+            return [(b, b) for b in self._camera_info['SupportedBins']]
+        else:
+            return []
 
     def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.

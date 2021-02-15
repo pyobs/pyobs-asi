@@ -223,17 +223,29 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         whbi = self._camera.get_roi_format()
 
         # decide on image format
+        shape = [whbi[1], whbi[0]]
         if image_format == asi.ASI_IMG_RAW8:
-            shape = [whbi[1], whbi[0]]
-            data = np.frombuffer(buffer, dtype=np.uint8).reshape(shape)
+            data = np.frombuffer(buffer, dtype=np.uint8)
         elif image_format == asi.ASI_IMG_RAW16:
-            shape = [whbi[1], whbi[0]]
-            data = np.frombuffer(buffer, dtype=np.uint16).reshape(shape)
+            data = np.frombuffer(buffer, dtype=np.uint16)
         elif image_format == asi.ASI_IMG_RGB24:
-            shape = [3, whbi[1], whbi[0]]
-            data = np.frombuffer(buffer, dtype=np.uint8).reshape(shape)
+            shape.append(3)
+            data = np.frombuffer(buffer, dtype=np.uint8)
         else:
             raise ValueError('Unknown image format.')
+
+        # reshape
+        data = data.reshape(shape)
+
+        # special treatment for RGB images
+        if image_format == asi.ASI_IMG_RGB24:
+            # convert BGR to RGB
+            data = data[:, :, ::-1]
+
+            # now we need to separate the R, G, and B images
+            # this is easiest done by shifting the RGB axis from last to first position
+            # i.e. we go from RGBRGBRGBRGBRGB to RRRRRGGGGGBBBBB
+            data = np.moveaxis(data, 2, 0)
 
         # create FITS image and set header
         image = Image(data)

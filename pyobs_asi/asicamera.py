@@ -272,6 +272,10 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         image.header['DET-PIXL'] = (self._camera_info['PixelSize'] / 1000., 'Size of detector pixels (square) [mm]')
         image.header['DET-GAIN'] = (self._camera_info['ElecPerADU'], 'Detector gain [e-/ADU]')
 
+        # Bayer pattern?
+        if image_format in [asi.ASI_IMG_RAW8, asi.ASI_IMG_RAW16]:
+            image.header['BAYERPAT'] = image.header['COLORTYP'] = ('GBRG', 'Bayer pattern for colors')
+
         # biassec/trimsec
         self.set_biassec_trimsec(image.header, *self._window)
 

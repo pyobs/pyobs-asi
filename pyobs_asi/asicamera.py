@@ -2,15 +2,13 @@ import logging
 import math
 import threading
 from datetime import datetime
-import time
-from astropy.io import fits
 import numpy as np
 import zwoasi as asi
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling, IImageFormat
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat
-from pyobs.utils.images import Image
+from pyobs.images import Image
 
 log = logging.getLogger(__name__)
 

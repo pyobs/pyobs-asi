@@ -2,6 +2,8 @@ import logging
 import math
 import threading
 from datetime import datetime
+from typing import List, Tuple, Any, Dict, Optional
+
 import numpy as np
 import zwoasi as asi
 
@@ -36,12 +38,12 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         # variables
         self._camera_name = camera
         self._sdk_path = sdk
-        self._camera = None
-        self._camera_info = {}
+        self._camera: Optional[asi.Camera] = None
+        self._camera_info: Dict[str, Any] = {}
 
         # window and binning and mode
-        self._window = None
-        self._binning = None
+        self._window = (0, 0, 0, 0)
+        self._binning = 1
         self._image_format = ImageFormat.INT16
 
     def open(self):
@@ -97,7 +99,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """Close the module."""
         BaseCamera.close(self)
 
-    def get_full_frame(self, *args, **kwargs) -> (int, int, int, int):
+    def get_full_frame(self, *args, **kwargs) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -105,7 +107,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """
         return 0, 0, self._camera_info['MaxWidth'], self._camera_info['MaxHeight']
 
-    def get_window(self, *args, **kwargs) -> (int, int, int, int):
+    def get_window(self, *args, **kwargs) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:
@@ -113,7 +115,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """
         return self._window
 
-    def get_binning(self, *args, **kwargs) -> (int, int):
+    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -121,7 +123,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """
         return self._binning, self._binning
 
-    def set_window(self, left: float, top: float, width: float, height: float, *args, **kwargs):
+    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
         """Set the camera window.
 
         Args:
@@ -149,7 +151,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         self._binning = x
         log.info('Setting binning to %dx%d...', x, x)
 
-    def list_binnings(self, *args, **kwargs) -> list:
+    def list_binnings(self, *args, **kwargs) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:
@@ -173,6 +175,10 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         Returns:
             The actual image.
         """
+
+        # no camera?
+        if self._camera is None:
+            raise ValueError('No camera initialised.')
 
         # get image format
         image_format = FORMATS[self._image_format]
@@ -316,7 +322,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         # activate cooling
         self.set_cooling(True, self._temp_setpoint)
 
-    def get_cooling_status(self, *args, **kwargs) -> (bool,  float, float):
+    def get_cooling_status(self, *args, **kwargs) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -325,6 +331,12 @@ class AsiCoolCamera(AsiCamera, ICooling):
                 SetPoint (float):       Setpoint for the cooling in celsius.
                 Power (float):          Current cooling power in percent or None.
         """
+
+        # no camera?
+        if self._camera is None:
+            raise ValueError('No camera initialised.')
+
+        # return
         enabled = self._camera.get_control_value(asi.ASI_COOLER_ON)[0]
         temp = self._camera.get_control_value(asi.ASI_TARGET_TEMP)[0]
         power = self._camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0]
@@ -336,6 +348,12 @@ class AsiCoolCamera(AsiCamera, ICooling):
         Returns:
             Dict containing temperatures.
         """
+
+        # no camera?
+        if self._camera is None:
+            raise ValueError('No camera initialised.')
+
+        # return
         return {
             'CCD': self._camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.
         }
@@ -350,6 +368,10 @@ class AsiCoolCamera(AsiCamera, ICooling):
         Raises:
             ValueError: If cooling could not be set.
         """
+
+        # no camera?
+        if self._camera is None:
+            raise ValueError('No camera initialised.')
 
         # log
         if enabled:

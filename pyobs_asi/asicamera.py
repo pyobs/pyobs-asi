@@ -9,7 +9,7 @@ import zwoasi as asi
 
 from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling, IImageFormat
 from pyobs.modules.camera.basecamera import BaseCamera
-from pyobs.utils.enums import ImageFormat
+from pyobs.utils.enums import ImageFormat, ExposureStatus
 from pyobs.images import Image
 
 log = logging.getLogger(__name__)
@@ -193,7 +193,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
                              self._binning, image_format)
 
         # set status and exposure time in ms
-        self._change_exposure_status(ICamera.ExposureStatus.EXPOSING)
+        self._change_exposure_status(ExposureStatus.EXPOSING)
         self._camera.set_control_value(asi.ASI_EXPOSURE, int(exposure_time * 1e6))
 
         # get date obs
@@ -209,7 +209,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         while self._camera.get_exposure_status() == asi.ASI_EXP_WORKING:
             # aborted?
             if abort_event.is_set():
-                self._change_exposure_status(ICamera.ExposureStatus.IDLE)
+                self._change_exposure_status(ExposureStatus.IDLE)
                 raise ValueError('Aborted exposure.')
 
             # sleep a little
@@ -222,7 +222,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
 
         # get data
         log.info('Exposure finished, reading out...')
-        self._change_exposure_status(ICamera.ExposureStatus.READOUT)
+        self._change_exposure_status(ExposureStatus.READOUT)
         buffer = self._camera.get_data_after_exposure()
         whbi = self._camera.get_roi_format()
 
@@ -285,7 +285,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
 
         # return FITS image
         log.info('Readout finished.')
-        self._change_exposure_status(ICamera.ExposureStatus.IDLE)
+        self._change_exposure_status(ExposureStatus.IDLE)
         return image
 
     def _abort_exposure(self):

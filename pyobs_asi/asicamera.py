@@ -25,6 +25,7 @@ FORMATS = {
 
 class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat):
     """A pyobs module for ASI cameras."""
+    __module__ = 'pyobs_asi'
 
     def __init__(self, camera: str, sdk: str = '/usr/local/lib/libASICamera2.so', *args, **kwargs):
         """Initializes a new AsiCamera.

@@ -1,8 +1,6 @@
 """
-ASI camera modules (pyobs_asi)
-------------------------------
-
 TODO: write doc
 """
+__title__ = 'ASI camera modules'
 
 from .asicamera import AsiCamera, AsiCoolCamera

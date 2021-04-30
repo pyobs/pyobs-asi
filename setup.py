@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pyobs-asi',
-    version='0.1',
+    version='0.13',
     description='pyobs component for ASI cameras',
     author='Tim-Oliver Husser',
     author_email='thusser@uni-goettingen.de',

@@ -7,7 +7,7 @@ from typing import List, Tuple, Any, Dict, Optional
 import numpy as np
 import zwoasi as asi
 
-from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling, IImageFormat
+from pyobs.interfaces import ICamera, ICameraWindow, IBinning, ICooling, IImageFormat
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat, ExposureStatus
 from pyobs.images import Image
@@ -23,7 +23,7 @@ FORMATS = {
 }
 
 
-class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat):
+class AsiCamera(BaseCamera, ICamera, ICameraWindow, IBinning, IImageFormat):
     """A pyobs module for ASI cameras."""
     __module__ = 'pyobs_asi'
 

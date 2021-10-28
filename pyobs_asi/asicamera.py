@@ -381,7 +381,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
             self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
         else:
             log.info('Disabling cooling...')
-            self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
+            self._camera.set_control_value(asi.ASI_COOLER_ON, 0)
 
     def set_image_format(self, format: ImageFormat, **kwargs: Any) -> None:
         """Set the camera image format.

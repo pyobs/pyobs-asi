@@ -377,7 +377,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         # log
         if enabled:
             log.info('Enabling cooling with a setpoint of %.2f°C...', setpoint)
-            self._camera.set_control_value(asi.ASI_TARGET_TEMP, int(setpoint * 10.))
+            self._camera.set_control_value(asi.ASI_TARGET_TEMP, int(setpoint))
             self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
         else:
             log.info('Disabling cooling...')

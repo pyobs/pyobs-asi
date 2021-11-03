@@ -5,9 +5,9 @@ from datetime import datetime
 from typing import List, Tuple, Any, Dict, Optional
 
 import numpy as np
-import zwoasi as asi
+import zwoasi as asi  # type: ignore
 
-from pyobs.interfaces import ICamera, ICameraWindow, ICameraBinning, ICooling, IImageFormat
+from pyobs.interfaces import ICamera, IWindow, IBinning, ICooling, IImageFormat
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat, ExposureStatus
 from pyobs.images import Image
@@ -23,18 +23,18 @@ FORMATS = {
 }
 
 
-class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat):
+class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
     """A pyobs module for ASI cameras."""
     __module__ = 'pyobs_asi'
 
-    def __init__(self, camera: str, sdk: str = '/usr/local/lib/libASICamera2.so', *args, **kwargs):
+    def __init__(self, camera: str, sdk: str = '/usr/local/lib/libASICamera2.so', **kwargs: Any):
         """Initializes a new AsiCamera.
 
         Args:
             camera: Name of camera to use.
             sdk: Path to .so file from ASI SDK.
         """
-        BaseCamera.__init__(self, *args, **kwargs)
+        BaseCamera.__init__(self, **kwargs)
 
         # variables
         self._camera_name = camera
@@ -47,7 +47,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         self._binning = 1
         self._image_format = ImageFormat.INT16
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         BaseCamera.open(self)
 
@@ -96,11 +96,11 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         self._binning = self._camera.get_bin()
         self._window = self._camera.get_roi()
 
-    def close(self):
+    def close(self) -> None:
         """Close the module."""
         BaseCamera.close(self)
 
-    def get_full_frame(self, *args, **kwargs) -> Tuple[int, int, int, int]:
+    def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -108,7 +108,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """
         return 0, 0, self._camera_info['MaxWidth'], self._camera_info['MaxHeight']
 
-    def get_window(self, *args, **kwargs) -> Tuple[int, int, int, int]:
+    def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:
@@ -116,7 +116,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """
         return self._window
 
-    def get_binning(self, *args, **kwargs) -> Tuple[int, int]:
+    def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -124,7 +124,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         """
         return self._binning, self._binning
 
-    def set_window(self, left: int, top: int, width: int, height: int, *args, **kwargs):
+    def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
 
         Args:
@@ -139,7 +139,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         self._window = (left, top, width, height)
         log.info('Setting window to %dx%d at %d,%d...', width, height, left, top)
 
-    def set_binning(self, x: int, y: int, *args, **kwargs):
+    def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
         Args:
@@ -152,7 +152,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         self._binning = x
         log.info('Setting binning to %dx%d...', x, x)
 
-    def list_binnings(self, *args, **kwargs) -> List[Tuple[int, int]]:
+    def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:
@@ -289,7 +289,7 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
         self._change_exposure_status(ExposureStatus.IDLE)
         return image
 
-    def _abort_exposure(self):
+    def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
 
         Raises:
@@ -301,18 +301,18 @@ class AsiCamera(BaseCamera, ICamera, ICameraWindow, ICameraBinning, IImageFormat
 class AsiCoolCamera(AsiCamera, ICooling):
     """A pyobs module for ASI cameras with cooling."""
 
-    def __init__(self, setpoint: int = -20, *args, **kwargs):
+    def __init__(self, setpoint: int = -20, **kwargs: Any):
         """Initializes a new AsiCoolCamera.
 
         Args:
             setpoint: Cooling temperature setpoint.
         """
-        AsiCamera.__init__(self, *args, **kwargs)
+        AsiCamera.__init__(self, **kwargs)
 
         # variables
         self._temp_setpoint = setpoint
 
-    def open(self):
+    def open(self) -> None:
         """Open module."""
         AsiCamera.open(self)
 
@@ -323,7 +323,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         # activate cooling
         self.set_cooling(True, self._temp_setpoint)
 
-    def get_cooling_status(self, *args, **kwargs) -> Tuple[bool, float, float]:
+    def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -343,7 +343,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         power = self._camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0]
         return enabled, temp, power
 
-    def get_temperatures(self, *args, **kwargs) -> dict:
+    def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:
@@ -359,7 +359,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
             'CCD': self._camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.
         }
 
-    def set_cooling(self, enabled: bool, setpoint: float, *args, **kwargs):
+    def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 
         Args:
@@ -381,9 +381,9 @@ class AsiCoolCamera(AsiCamera, ICooling):
             self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
         else:
             log.info('Disabling cooling...')
-            self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
+            self._camera.set_control_value(asi.ASI_COOLER_ON, 0)
 
-    def set_image_format(self, format: ImageFormat, *args, **kwargs):
+    def set_image_format(self, format: ImageFormat, **kwargs: Any) -> None:
         """Set the camera image format.
 
         Args:
@@ -396,7 +396,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
             raise ValueError('Unsupported image format.')
         self._image_format = format
 
-    def get_image_format(self, *args, **kwargs) -> ImageFormat:
+    def get_image_format(self, **kwargs: Any) -> ImageFormat:
         """Returns the camera image format.
 
         Returns:
@@ -404,7 +404,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         """
         return self._image_format
 
-    def list_image_formats(self, *args, **kwargs) -> List[str]:
+    def list_image_formats(self, **kwargs: Any) -> List[str]:
         """List available image formats.
 
         Returns:

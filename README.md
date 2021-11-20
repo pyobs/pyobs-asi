@@ -14,14 +14,10 @@ Clone the repository:
     git clone https://github.com/pyobs/pyobs-asi.git
 
 
-Install dependencies:
-
-    cd pyobs-asi
-    pip3 install -r requirements
-        
 And install it:
 
-    python3 setup.py install
+    cd pyobs-asi
+    pip3 install .
 
 
 Configuration

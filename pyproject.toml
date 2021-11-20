@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "pyobs-asi"
+version = "0.14.0"
+description = "pyobs model for ASI cameras"
+authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+
+[tool.poetry.dev-dependencies]
+python = ">=3.7,<3.11"
+astropy = "^4.2"
+numpy = "^1.21"
+zwoasi = "^0.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

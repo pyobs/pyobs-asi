@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 import threading
@@ -11,6 +12,7 @@ from pyobs.interfaces import ICamera, IWindow, IBinning, ICooling, IImageFormat
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat, ExposureStatus
 from pyobs.images import Image
+from pyobs.utils.parallel import event_wait
 
 log = logging.getLogger(__name__)
 
@@ -47,9 +49,9 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         self._binning = 1
         self._image_format = ImageFormat.INT16
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        BaseCamera.open(self)
+        await BaseCamera.open(self)
 
         # init driver
         asi.init(self._sdk_path)
@@ -96,11 +98,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         self._binning = self._camera.get_bin()
         self._window = self._camera.get_roi()
 
-    def close(self) -> None:
-        """Close the module."""
-        BaseCamera.close(self)
-
-    def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_full_frame(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns full size of CCD.
 
         Returns:
@@ -108,7 +106,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         """
         return 0, 0, self._camera_info['MaxWidth'], self._camera_info['MaxHeight']
 
-    def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
+    async def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns the camera window.
 
         Returns:
@@ -116,7 +114,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         """
         return self._window
 
-    def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
+    async def get_binning(self, **kwargs: Any) -> Tuple[int, int]:
         """Returns the camera binning.
 
         Returns:
@@ -124,7 +122,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         """
         return self._binning, self._binning
 
-    def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
+    async def set_window(self, left: int, top: int, width: int, height: int, **kwargs: Any) -> None:
         """Set the camera window.
 
         Args:
@@ -139,7 +137,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         self._window = (left, top, width, height)
         log.info('Setting window to %dx%d at %d,%d...', width, height, left, top)
 
-    def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
+    async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
 
         Args:
@@ -152,7 +150,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         self._binning = x
         log.info('Setting binning to %dx%d...', x, x)
 
-    def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
+    async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
 
         Returns:
@@ -165,7 +163,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         else:
             return []
 
-    def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -194,7 +192,6 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
                              self._binning, image_format)
 
         # set status and exposure time in ms
-        self._change_exposure_status(ExposureStatus.EXPOSING)
         self._camera.set_control_value(asi.ASI_EXPOSURE, int(exposure_time * 1e6))
 
         # get date obs
@@ -204,17 +201,17 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
 
         # do exposure
         self._camera.start_exposure()
-        self.closing.wait(0.01)
+        await asyncio.sleep(0.01)
 
         # wait for image
         while self._camera.get_exposure_status() == asi.ASI_EXP_WORKING:
             # aborted?
             if abort_event.is_set():
-                self._change_exposure_status(ExposureStatus.IDLE)
+                await self._change_exposure_status(ExposureStatus.IDLE)
                 raise ValueError('Aborted exposure.')
 
             # sleep a little
-            abort_event.wait(0.01)
+            await event_wait(abort_event, 0.01)
 
         # success?
         status = self._camera.get_exposure_status()
@@ -223,7 +220,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
 
         # get data
         log.info('Exposure finished, reading out...')
-        self._change_exposure_status(ExposureStatus.READOUT)
+        await self._change_exposure_status(ExposureStatus.READOUT)
         buffer = self._camera.get_data_after_exposure()
         whbi = self._camera.get_roi_format()
 
@@ -286,10 +283,9 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
 
         # return FITS image
         log.info('Readout finished.')
-        self._change_exposure_status(ExposureStatus.IDLE)
         return image
 
-    def _abort_exposure(self) -> None:
+    async def _abort_exposure(self) -> None:
         """Abort the running exposure. Should be implemented by derived class.
 
         Raises:
@@ -312,18 +308,18 @@ class AsiCoolCamera(AsiCamera, ICooling):
         # variables
         self._temp_setpoint = setpoint
 
-    def open(self) -> None:
+    async def open(self) -> None:
         """Open module."""
-        AsiCamera.open(self)
+        await AsiCamera.open(self)
 
         # no cooling support?
         if not self._camera_info['IsCoolerCam']:
             raise ValueError('Camera has no support for cooling.')
 
         # activate cooling
-        self.set_cooling(True, self._temp_setpoint)
+        await self.set_cooling(True, self._temp_setpoint)
 
-    def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
+    async def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:
@@ -343,7 +339,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         power = self._camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0]
         return enabled, temp, power
 
-    def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
         """Returns all temperatures measured by this module.
 
         Returns:
@@ -359,7 +355,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
             'CCD': self._camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.
         }
 
-    def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
+    async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
 
         Args:
@@ -383,7 +379,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
             log.info('Disabling cooling...')
             self._camera.set_control_value(asi.ASI_COOLER_ON, 0)
 
-    def set_image_format(self, format: ImageFormat, **kwargs: Any) -> None:
+    async def set_image_format(self, format: ImageFormat, **kwargs: Any) -> None:
         """Set the camera image format.
 
         Args:
@@ -396,7 +392,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
             raise ValueError('Unsupported image format.')
         self._image_format = format
 
-    def get_image_format(self, **kwargs: Any) -> ImageFormat:
+    async def get_image_format(self, **kwargs: Any) -> ImageFormat:
         """Returns the camera image format.
 
         Returns:
@@ -404,7 +400,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         """
         return self._image_format
 
-    def list_image_formats(self, **kwargs: Any) -> List[str]:
+    async def list_image_formats(self, **kwargs: Any) -> List[str]:
         """List available image formats.
 
         Returns:

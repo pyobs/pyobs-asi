@@ -84,15 +84,9 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         self._camera.set_control_value(asi.ASI_FLIP, 0)
         self._camera.set_image_type(asi.ASI_IMG_RAW16)
 
-        # Enabling stills mode
-        try:
-            # Force any single exposure to be halted
-            self._camera.stop_video_capture()
-            self._camera.stop_exposure()
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except:
-            pass
+        # enabling image mode
+        self._camera.stop_video_capture()
+        self._camera.stop_exposure()
 
         # get initial window and binning
         self._binning = self._camera.get_bin()
@@ -293,6 +287,35 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         """
         pass
 
+    async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
+        """Set the camera image format.
+
+        Args:
+            fmt: New image format.
+
+        Raises:
+            ValueError: If format could not be set.
+        """
+        if fmt not in FORMATS:
+            raise ValueError('Unsupported image format.')
+        self._image_format = fmt
+
+    async def get_image_format(self, **kwargs: Any) -> ImageFormat:
+        """Returns the camera image format.
+
+        Returns:
+            Current image format.
+        """
+        return self._image_format
+
+    async def list_image_formats(self, **kwargs: Any) -> List[str]:
+        """List available image formats.
+
+        Returns:
+            List of available image formats.
+        """
+        return [f.value for f in FORMATS.keys()]
+
 
 class AsiCoolCamera(AsiCamera, ICooling):
     """A pyobs module for ASI cameras with cooling."""
@@ -378,35 +401,6 @@ class AsiCoolCamera(AsiCamera, ICooling):
         else:
             log.info('Disabling cooling...')
             self._camera.set_control_value(asi.ASI_COOLER_ON, 0)
-
-    async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
-        """Set the camera image format.
-
-        Args:
-            fmt: New image format.
-
-        Raises:
-            ValueError: If format could not be set.
-        """
-        if fmt not in FORMATS:
-            raise ValueError('Unsupported image format.')
-        self._image_format = fmt
-
-    async def get_image_format(self, **kwargs: Any) -> ImageFormat:
-        """Returns the camera image format.
-
-        Returns:
-            Current image format.
-        """
-        return self._image_format
-
-    async def list_image_formats(self, **kwargs: Any) -> List[str]:
-        """List available image formats.
-
-        Returns:
-            List of available image formats.
-        """
-        return [f.value for f in FORMATS.keys()]
 
 
 __all__ = ['AsiCamera', 'AsiCoolCamera']

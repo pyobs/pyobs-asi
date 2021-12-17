@@ -379,18 +379,18 @@ class AsiCoolCamera(AsiCamera, ICooling):
             log.info('Disabling cooling...')
             self._camera.set_control_value(asi.ASI_COOLER_ON, 0)
 
-    async def set_image_format(self, format: ImageFormat, **kwargs: Any) -> None:
+    async def set_image_format(self, fmt: ImageFormat, **kwargs: Any) -> None:
         """Set the camera image format.
 
         Args:
-            format: New image format.
+            fmt: New image format.
 
         Raises:
             ValueError: If format could not be set.
         """
-        if format not in FORMATS:
+        if fmt not in FORMATS:
             raise ValueError('Unsupported image format.')
-        self._image_format = format
+        self._image_format = fmt
 
     async def get_image_format(self, **kwargs: Any) -> ImageFormat:
         """Returns the camera image format.

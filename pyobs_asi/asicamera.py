@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import math
-import threading
 from datetime import datetime
 from typing import List, Tuple, Any, Dict, Optional
 
@@ -21,15 +20,16 @@ log = logging.getLogger(__name__)
 FORMATS = {
     ImageFormat.INT8: asi.ASI_IMG_RAW8,
     ImageFormat.INT16: asi.ASI_IMG_RAW16,
-    ImageFormat.RGB24: asi.ASI_IMG_RGB24
+    ImageFormat.RGB24: asi.ASI_IMG_RGB24,
 }
 
 
 class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
     """A pyobs module for ASI cameras."""
-    __module__ = 'pyobs_asi'
 
-    def __init__(self, camera: str, sdk: str = '/usr/local/lib/libASICamera2.so', **kwargs: Any):
+    __module__ = "pyobs_asi"
+
+    def __init__(self, camera: str, sdk: str = "/usr/local/lib/libASICamera2.so", **kwargs: Any):
         """Initializes a new AsiCamera.
 
         Args:
@@ -59,7 +59,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         # get number of cameras
         num_cameras = asi.get_num_cameras()
         if num_cameras == 0:
-            raise ValueError('No cameras found')
+            raise ValueError("No cameras found")
 
         # get ID of camera
         # index() raises ValueError, if camera could not be found
@@ -69,9 +69,9 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         # open driver
         self._camera = asi.Camera(camera_id)
         self._camera_info = self._camera.get_camera_property()
-        log.info('Camera info:')
+        log.info("Camera info:")
         for key, val in self._camera_info.items():
-            log.info('  - %s: %s', key, val)
+            log.info("  - %s: %s", key, val)
 
         # Set some sensible defaults. They will need adjusting depending upon
         # the sensitivity, lens and lighting conditions used.
@@ -98,7 +98,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         Returns:
             Tuple with left, top, width, and height set.
         """
-        return 0, 0, self._camera_info['MaxWidth'], self._camera_info['MaxHeight']
+        return 0, 0, self._camera_info["MaxWidth"], self._camera_info["MaxHeight"]
 
     async def get_window(self, **kwargs: Any) -> Tuple[int, int, int, int]:
         """Returns the camera window.
@@ -129,7 +129,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             ValueError: If binning could not be set.
         """
         self._window = (left, top, width, height)
-        log.info('Setting window to %dx%d at %d,%d...', width, height, left, top)
+        log.info("Setting window to %dx%d at %d,%d...", width, height, left, top)
 
     async def set_binning(self, x: int, y: int, **kwargs: Any) -> None:
         """Set the camera binning.
@@ -142,7 +142,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             ValueError: If binning could not be set.
         """
         self._binning = x
-        log.info('Setting binning to %dx%d...', x, x)
+        log.info("Setting binning to %dx%d...", x, x)
 
     async def list_binnings(self, **kwargs: Any) -> List[Tuple[int, int]]:
         """List available binnings.
@@ -151,13 +151,13 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             List of available binnings as (x, y) tuples.
         """
 
-        if 'SupportedBins' in self._camera_info:
+        if "SupportedBins" in self._camera_info:
             # create list of tuples
-            return [(b, b) for b in self._camera_info['SupportedBins']]
+            return [(b, b) for b in self._camera_info["SupportedBins"]]
         else:
             return []
 
-    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: threading.Event) -> Image:
+    async def _expose(self, exposure_time: float, open_shutter: bool, abort_event: asyncio.Event) -> Image:
         """Actually do the exposure, should be implemented by derived classes.
 
         Args:
@@ -171,7 +171,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
 
         # no camera?
         if self._camera is None:
-            raise ValueError('No camera initialised.')
+            raise ValueError("No camera initialised.")
 
         # get image format
         image_format = FORMATS[self._image_format]
@@ -179,18 +179,26 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         # set window, divide width/height by binning
         width = int(math.floor(self._window[2]) / self._binning)
         height = int(math.floor(self._window[3]) / self._binning)
-        log.info("Set window to %dx%d (binned %dx%d with %dx%d) at %d,%d.",
-                 self._window[2], self._window[3], width, height, self._binning, self._binning,
-                 self._window[0], self._window[1])
-        self._camera.set_roi(int(self._window[0]), int(self._window[1]), width, height,
-                             self._binning, image_format)
+        log.info(
+            "Set window to %dx%d (binned %dx%d with %dx%d) at %d,%d.",
+            self._window[2],
+            self._window[3],
+            width,
+            height,
+            self._binning,
+            self._binning,
+            self._window[0],
+            self._window[1],
+        )
+        self._camera.set_roi(int(self._window[0]), int(self._window[1]), width, height, self._binning, image_format)
 
         # set status and exposure time in ms
         self._camera.set_control_value(asi.ASI_EXPOSURE, int(exposure_time * 1e6))
 
         # get date obs
-        log.info('Starting exposure with %s shutter for %.2f seconds...',
-                 'open' if open_shutter else 'closed', exposure_time)
+        log.info(
+            "Starting exposure with %s shutter for %.2f seconds...", "open" if open_shutter else "closed", exposure_time
+        )
         date_obs = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
 
         # do exposure
@@ -202,7 +210,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             # aborted?
             if abort_event.is_set():
                 await self._change_exposure_status(ExposureStatus.IDLE)
-                raise ValueError('Aborted exposure.')
+                raise ValueError("Aborted exposure.")
 
             # sleep a little
             await event_wait(abort_event, 0.01)
@@ -210,10 +218,10 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         # success?
         status = self._camera.get_exposure_status()
         if status != asi.ASI_EXP_SUCCESS:
-            raise ValueError('Could not capture image: %s' % status)
+            raise ValueError("Could not capture image: %s" % status)
 
         # get data
-        log.info('Exposure finished, reading out...')
+        log.info("Exposure finished, reading out...")
         await self._change_exposure_status(ExposureStatus.READOUT)
         buffer = self._camera.get_data_after_exposure()
         whbi = self._camera.get_roi_format()
@@ -228,7 +236,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             shape.append(3)
             data = np.frombuffer(buffer, dtype=np.uint8)
         else:
-            raise ValueError('Unknown image format.')
+            raise ValueError("Unknown image format.")
 
         # reshape
         data = data.reshape(shape)
@@ -245,38 +253,38 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
 
         # create FITS image and set header
         image = Image(data)
-        image.header['DATE-OBS'] = (date_obs, 'Date and time of start of exposure')
-        image.header['EXPTIME'] = (exposure_time, 'Exposure time [s]')
+        image.header["DATE-OBS"] = (date_obs, "Date and time of start of exposure")
+        image.header["EXPTIME"] = (exposure_time, "Exposure time [s]")
 
         # instrument and detector
-        image.header['INSTRUME'] = (self._camera_name, 'Name of instrument')
+        image.header["INSTRUME"] = (self._camera_name, "Name of instrument")
 
         # binning
-        image.header['XBINNING'] = image.header['DET-BIN1'] = (self._binning, 'Binning factor used on X axis')
-        image.header['YBINNING'] = image.header['DET-BIN2'] = (self._binning, 'Binning factor used on Y axis')
+        image.header["XBINNING"] = image.header["DET-BIN1"] = (self._binning, "Binning factor used on X axis")
+        image.header["YBINNING"] = image.header["DET-BIN2"] = (self._binning, "Binning factor used on Y axis")
 
         # window
-        image.header['XORGSUBF'] = (self._window[0], 'Subframe origin on X axis')
-        image.header['YORGSUBF'] = (self._window[1], 'Subframe origin on Y axis')
+        image.header["XORGSUBF"] = (self._window[0], "Subframe origin on X axis")
+        image.header["YORGSUBF"] = (self._window[1], "Subframe origin on Y axis")
 
         # statistics
-        image.header['DATAMIN'] = (float(np.min(data)), 'Minimum data value')
-        image.header['DATAMAX'] = (float(np.max(data)), 'Maximum data value')
-        image.header['DATAMEAN'] = (float(np.mean(data)), 'Mean data value')
+        image.header["DATAMIN"] = (float(np.min(data)), "Minimum data value")
+        image.header["DATAMAX"] = (float(np.max(data)), "Maximum data value")
+        image.header["DATAMEAN"] = (float(np.mean(data)), "Mean data value")
 
         # pixels
-        image.header['DET-PIXL'] = (self._camera_info['PixelSize'] / 1000., 'Size of detector pixels (square) [mm]')
-        image.header['DET-GAIN'] = (self._camera_info['ElecPerADU'], 'Detector gain [e-/ADU]')
+        image.header["DET-PIXL"] = (self._camera_info["PixelSize"] / 1000.0, "Size of detector pixels (square) [mm]")
+        image.header["DET-GAIN"] = (self._camera_info["ElecPerADU"], "Detector gain [e-/ADU]")
 
         # Bayer pattern?
         if image_format in [asi.ASI_IMG_RAW8, asi.ASI_IMG_RAW16]:
-            image.header['BAYERPAT'] = image.header['COLORTYP'] = ('GBRG', 'Bayer pattern for colors')
+            image.header["BAYERPAT"] = image.header["COLORTYP"] = ("GBRG", "Bayer pattern for colors")
 
         # biassec/trimsec
         self.set_biassec_trimsec(image.header, *self._window)
 
         # return FITS image
-        log.info('Readout finished.')
+        log.info("Readout finished.")
         return image
 
     async def _abort_exposure(self) -> None:
@@ -297,7 +305,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             ValueError: If format could not be set.
         """
         if fmt not in FORMATS:
-            raise ValueError('Unsupported image format.')
+            raise ValueError("Unsupported image format.")
         self._image_format = fmt
 
     async def get_image_format(self, **kwargs: Any) -> ImageFormat:
@@ -336,8 +344,8 @@ class AsiCoolCamera(AsiCamera, ICooling):
         await AsiCamera.open(self)
 
         # no cooling support?
-        if not self._camera_info['IsCoolerCam']:
-            raise ValueError('Camera has no support for cooling.')
+        if not self._camera_info["IsCoolerCam"]:
+            raise ValueError("Camera has no support for cooling.")
 
         # activate cooling
         await self.set_cooling(True, self._temp_setpoint)
@@ -354,7 +362,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
 
         # no camera?
         if self._camera is None:
-            raise ValueError('No camera initialised.')
+            raise ValueError("No camera initialised.")
 
         # return
         enabled = self._camera.get_control_value(asi.ASI_COOLER_ON)[0]
@@ -371,12 +379,10 @@ class AsiCoolCamera(AsiCamera, ICooling):
 
         # no camera?
         if self._camera is None:
-            raise ValueError('No camera initialised.')
+            raise ValueError("No camera initialised.")
 
         # return
-        return {
-            'CCD': self._camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.
-        }
+        return {"CCD": self._camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.0}
 
     async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
@@ -391,16 +397,16 @@ class AsiCoolCamera(AsiCamera, ICooling):
 
         # no camera?
         if self._camera is None:
-            raise ValueError('No camera initialised.')
+            raise ValueError("No camera initialised.")
 
         # log
         if enabled:
-            log.info('Enabling cooling with a setpoint of %.2f°C...', setpoint)
+            log.info("Enabling cooling with a setpoint of %.2f°C...", setpoint)
             self._camera.set_control_value(asi.ASI_TARGET_TEMP, int(setpoint))
             self._camera.set_control_value(asi.ASI_COOLER_ON, 1)
         else:
-            log.info('Disabling cooling...')
+            log.info("Disabling cooling...")
             self._camera.set_control_value(asi.ASI_COOLER_ON, 0)
 
 
-__all__ = ['AsiCamera', 'AsiCoolCamera']
+__all__ = ["AsiCamera", "AsiCoolCamera"]

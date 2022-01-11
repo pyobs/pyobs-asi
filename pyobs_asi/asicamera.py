@@ -12,6 +12,7 @@ from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat, ExposureStatus
 from pyobs.images import Image
 from pyobs.utils.parallel import event_wait
+from pyobs.utils import exceptions as exc
 
 log = logging.getLogger(__name__)
 
@@ -167,6 +168,10 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
 
         Returns:
             The actual image.
+
+        Raises:
+            GrabImageError: If exposure was not successful.
+            AbortedError: If exposure was aborted.
         """
 
         # no camera?
@@ -210,7 +215,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             # aborted?
             if abort_event.is_set():
                 await self._change_exposure_status(ExposureStatus.IDLE)
-                raise ValueError("Aborted exposure.")
+                raise exc.AbortedError("Aborted exposure.")
 
             # sleep a little
             await event_wait(abort_event, 0.01)
@@ -218,7 +223,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
         # success?
         status = self._camera.get_exposure_status()
         if status != asi.ASI_EXP_SUCCESS:
-            raise ValueError("Could not capture image: %s" % status)
+            raise exc.GrabImageError("Could not capture image: %s" % status)
 
         # get data
         log.info("Exposure finished, reading out...")
@@ -236,7 +241,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             shape.append(3)
             data = np.frombuffer(buffer, dtype=np.uint8)
         else:
-            raise ValueError("Unknown image format.")
+            raise exc.GrabImageError("Unknown image format.")
 
         # reshape
         data = data.reshape(shape)

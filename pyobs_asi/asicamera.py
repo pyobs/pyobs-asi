@@ -215,7 +215,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
             # aborted?
             if abort_event.is_set():
                 await self._change_exposure_status(ExposureStatus.IDLE)
-                raise exc.AbortedError("Aborted exposure.")
+                raise InterruptedError("Aborted exposure.")
 
             # sleep a little
             await event_wait(abort_event, 0.01)

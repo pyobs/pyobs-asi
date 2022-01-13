@@ -171,7 +171,6 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
 
         Raises:
             GrabImageError: If exposure was not successful.
-            AbortedError: If exposure was aborted.
         """
 
         # no camera?

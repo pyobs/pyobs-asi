@@ -7,7 +7,7 @@ from typing import List, Tuple, Any, Dict, Optional
 import numpy as np
 import zwoasi as asi  # type: ignore
 
-from pyobs.interfaces import ICamera, IWindow, IBinning, ICooling, IImageFormat
+from pyobs.interfaces import ICamera, IWindow, IBinning, ICooling, IImageFormat, IAbortable
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat, ExposureStatus
 from pyobs.images import Image
@@ -25,7 +25,7 @@ FORMATS = {
 }
 
 
-class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat):
+class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable):
     """A pyobs module for ASI cameras."""
 
     __module__ = "pyobs_asi"
@@ -354,7 +354,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
         # activate cooling
         await self.set_cooling(True, self._temp_setpoint)
 
-    async def get_cooling_status(self, **kwargs: Any) -> Tuple[bool, float, float]:
+    async def get_cooling(self, **kwargs: Any) -> Tuple[bool, float, float]:
         """Returns the current status for the cooling.
 
         Returns:

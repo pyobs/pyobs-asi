@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyobs-asi"
-version = "0.16.0"
+version = "0.20.0"
 description = "pyobs model for ASI cameras"
 authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
 license = "MIT"
@@ -10,7 +10,7 @@ python = ">=3.9,<3.11"
 astropy = "^5.0"
 numpy = "^1.21"
 zwoasi = "^0.1"
-pyobs-core = "^0.16.1"
+pyobs-core = ">0.18"
 
 [tool.poetry.dev-dependencies]
 black = "^21.12b0"

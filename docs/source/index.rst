@@ -60,3 +60,9 @@ AsiCamera
 .. autoclass:: pyobs_asi.AsiCamera
    :members:
    :show-inheritance:
+
+AsiCoolCamera
+=============
+.. autoclass:: pyobs_asi.AsiCoolCamera
+   :members:
+   :show-inheritance:

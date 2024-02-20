@@ -7,7 +7,7 @@ from typing import List, Tuple, Any, Dict, Optional
 import numpy as np
 import zwoasi as asi  # type: ignore
 
-from pyobs.interfaces import ICamera, IWindow, IBinning, ICooling, IImageFormat, IAbortable
+from pyobs.interfaces import ICamera, IWindow, IBinning, ICooling, IImageFormat, IAbortable, ITemperatures, IGain
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat, ExposureStatus
 from pyobs.images import Image
@@ -25,7 +25,7 @@ FORMATS = {
 }
 
 
-class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable):
+class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable, IGain, ITemperatures):
     """A pyobs module for ASI cameras."""
 
     __module__ = "pyobs_asi"
@@ -49,6 +49,8 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
         self._window = (0, 0, 0, 0)
         self._binning = 1
         self._image_format = ImageFormat.INT16
+
+        self._gain: float = 1.0
 
     async def open(self) -> None:
         """Open module."""
@@ -77,7 +79,6 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
         # Set some sensible defaults. They will need adjusting depending upon
         # the sensitivity, lens and lighting conditions used.
         self._camera.disable_dark_subtract()
-        self._camera.set_control_value(asi.ASI_GAIN, 150)
         self._camera.set_control_value(asi.ASI_WB_B, 99)
         self._camera.set_control_value(asi.ASI_WB_R, 75)
         self._camera.set_control_value(asi.ASI_GAMMA, 50)
@@ -199,11 +200,13 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
         # set status and exposure time in ms
         self._camera.set_control_value(asi.ASI_EXPOSURE, int(exposure_time * 1e6))
 
-        # get date obs
+        # set gain
+        self._camera.set_control_value(asi.ASI_GAIN, int(self._gain))
+
         log.info(
-            "Starting exposure with %s shutter for %.2f seconds...", "open" if open_shutter else "closed", exposure_time
+            "Starting exposure with %s shutter for %s seconds and %s gain...", "open"
+            if open_shutter else "closed", exposure_time, self._gain
         )
-        date_obs = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
 
         # do exposure
         self._camera.start_exposure()
@@ -228,6 +231,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
         log.info("Exposure finished, reading out...")
         await self._change_exposure_status(ExposureStatus.READOUT)
         buffer = self._camera.get_data_after_exposure()
+
         whbi = self._camera.get_roi_format()
 
         # decide on image format
@@ -255,6 +259,9 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
             # i.e. we go from RGBRGBRGBRGBRGB to RRRRRGGGGGBBBBB
             data = np.moveaxis(data, 2, 0)
 
+        # get date obs
+        date_obs = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
+
         # create FITS image and set header
         image = Image(data)
         image.header["DATE-OBS"] = (date_obs, "Date and time of start of exposure")
@@ -278,11 +285,15 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
 
         # pixels
         image.header["DET-PIXL"] = (self._camera_info["PixelSize"] / 1000.0, "Size of detector pixels (square) [mm]")
-        image.header["DET-GAIN"] = (self._camera_info["ElecPerADU"], "Detector gain [e-/ADU]")
+        image.header["DET-GAIN"] = (self._camera_info["ElecPerADU"] * self._gain, "Detector gain [e-/ADU]")
 
         # Bayer pattern?
         if image_format in [asi.ASI_IMG_RAW8, asi.ASI_IMG_RAW16]:
             image.header["BAYERPAT"] = image.header["COLORTYP"] = ("GBRG", "Bayer pattern for colors")
+
+        # temperature
+        temperature = self._get_temperature()
+        image.header["DET-TEMP"] = (temperature, "CCD temperature [C]")
 
         # biassec/trimsec
         self.set_biassec_trimsec(image.header, *self._window)
@@ -327,6 +338,37 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
             List of available image formats.
         """
         return [f.value for f in FORMATS.keys()]
+
+    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+        temperature = self._get_temperature()
+        return {"CCD": temperature}
+
+    def _get_temperature(self) -> float:
+        """
+        Gets the temperature from the camera.
+
+        Reading is divided by 10, since ASI_TEMPERATURE returns temp * 10
+        """
+        return self._camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10
+
+    async def set_gain(self, gain: float, **kwargs: Any) -> None:
+        """Set the camera gain.
+
+        Args:
+            gain: New camera gain.
+
+        Raises:
+            ValueError: If gain could not be set.
+        """
+        self._gain = gain
+
+    async def get_gain(self, **kwargs: Any) -> float:
+        """Returns the camera gain.
+
+        Returns:
+            Current gain.
+        """
+        return self._gain
 
 
 class AsiCoolCamera(AsiCamera, ICooling):

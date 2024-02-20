@@ -7,7 +7,7 @@ from typing import List, Tuple, Any, Dict, Optional
 import numpy as np
 import zwoasi as asi  # type: ignore
 
-from pyobs.interfaces import ICamera, IWindow, IBinning, ICooling, IImageFormat, IAbortable, IGain
+from pyobs.interfaces import ICamera, IWindow, IBinning, ICooling, IImageFormat, IAbortable, ITemperatures, IGain
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils.enums import ImageFormat, ExposureStatus
 from pyobs.images import Image
@@ -25,7 +25,7 @@ FORMATS = {
 }
 
 
-class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable, IGain):
+class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable, IGain, ITemperatures):
     """A pyobs module for ASI cameras."""
 
     __module__ = "pyobs_asi"
@@ -291,6 +291,10 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
         if image_format in [asi.ASI_IMG_RAW8, asi.ASI_IMG_RAW16]:
             image.header["BAYERPAT"] = image.header["COLORTYP"] = ("GBRG", "Bayer pattern for colors")
 
+        # temperature
+        temperature = self._get_temperature()
+        image.header["DET-TEMP"] = (temperature, "CCD temperature [C]")
+
         # biassec/trimsec
         self.set_biassec_trimsec(image.header, *self._window)
 
@@ -334,6 +338,18 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
             List of available image formats.
         """
         return [f.value for f in FORMATS.keys()]
+
+    async def get_temperatures(self, **kwargs: Any) -> Dict[str, float]:
+        temperature = self._get_temperature()
+        return {"CCD": temperature}
+
+    def _get_temperature(self) -> float:
+        """
+        Gets the temperature from the camera.
+
+        Reading is divided by 10, since ASI_TEMPERATURE returns temp * 10
+        """
+        return self._camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10
 
     async def set_gain(self, gain: float, **kwargs: Any) -> None:
         """Set the camera gain.

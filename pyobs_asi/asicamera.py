@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Tuple, Any, Dict, Optional
 
 import numpy as np
@@ -260,7 +260,7 @@ class AsiCamera(BaseCamera, ICamera, IWindow, IBinning, IImageFormat, IAbortable
             data = np.moveaxis(data, 2, 0)
 
         # get date obs
-        date_obs = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
+        date_obs = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
 
         # create FITS image and set header
         image = Image(data)

@@ -1,26 +1,28 @@
-[tool.poetry]
+[project]
 name = "pyobs-asi"
 version = "1.0.3"
 description = "pyobs model for ASI cameras"
-authors = ["Tim-Oliver Husser <thusser@uni-goettingen.de>"]
+authors = [{ name = "Tim-Oliver Husser", email = "thusser@uni-goettingen.de" }]
+requires-python = ">=3.11"
 license = "MIT"
+dependencies = [
+    "numpy>=2.2.5,<3",
+    "numpy>=2.2.5,<3",
+    "pyobs-core>=1,<2",
+    "zwoasi>=0.2.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<3.12"
-astropy = "^5.0"
-numpy = "^1.21"
-zwoasi = "^0.1"
-pyobs-core = "^1.0"
-
-[tool.poetry.dev-dependencies]
-black = "^21.12b0"
-pre-commit = "^2.16"
-Sphinx = "^4.4"
-sphinx-rtd-theme = "^1.0"
+[dependency-groups]
+dev = [
+    "black>=23.7.0,<24",
+    "pre-commit>=3.3.3,<4",
+    "flake8>=7.3.0",
+    "sphinx>=7.1.0,<8",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.black]
 line-length = 120

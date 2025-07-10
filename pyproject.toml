@@ -7,7 +7,6 @@ requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "numpy>=2.2.5,<3",
-    "numpy>=2.2.5,<3",
     "pyobs-core>=1,<2",
     "zwoasi>=0.2.0",
 ]

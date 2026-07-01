@@ -53,7 +53,8 @@ This is an example configuration, tested on a ASI 071 MC::
 Available classes
 *****************
 
-There is one single class for ASI ZWO cameras.
+There are two classes for ASI ZWO cameras: :class:`~pyobs_asi.AsiCamera` for cameras without cooling, and
+:class:`~pyobs_asi.AsiCoolCamera` for cameras with cooling support.
 
 AsiCamera
 =========

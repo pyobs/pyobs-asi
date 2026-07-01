@@ -1,5 +1,8 @@
-ASI module for *pyobs*
-======================
+*pyobs* for ZWO ASI cameras
+===========================
+
+This is a [pyobs](https://www.pyobs.org) module for [ZWO ASI](https://astronomy-imaging-camera.com/) cameras.
+
 
 ASI SDK
 -------
@@ -8,16 +11,21 @@ appropriate folder in `lib/` to `/usr/local/lib`. Then copy `asi.rules` to `/etc
 
 
 Install *pyobs-asi*
--------------------
+--------------------
 Clone the repository:
 
     git clone https://github.com/pyobs/pyobs-asi.git
-
-
-And install it:
-
     cd pyobs-asi
-    pip3 install .
+
+Install it with [uv](https://docs.astral.sh/uv/):
+
+    uv sync
+
+Alternatively, with plain `venv`/`pip`:
+
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install .
 
 
 Configuration
@@ -31,14 +39,33 @@ The *AsiCamera* class is derived from *BaseCamera* (see *pyobs* documentation) a
 
 Therefore, a basic module configuration would look like this:
 
-    class: pyobs_aso.AsiCamera
+    class: pyobs_asi.AsiCamera
     name: ASI camera
     camera: ZWO ASI071MC Pro
 
+For cameras with cooling, use *AsiCoolCamera* instead, which adds a `setpoint` parameter for the initial cooling
+setpoint in degrees Celsius:
+
+    class: pyobs_asi.AsiCoolCamera
+    name: ASI camera
+    camera: ZWO ASI071MC Pro
+    setpoint: -20
+
+
+GUI
+---
+For testing a camera without a full *pyobs* setup, install the optional `gui` extra:
+
+    uv sync --extra gui
+
+and run:
+
+    uv run asi-gui [path/to/libASICamera2.so]
+
+
 Dependencies
 ------------
-* **pyobs** for the core funcionality. It is not included in the *requirements.txt*, so needs to be installed 
-  separately.
+* [pyobs-core](https://github.com/pyobs/pyobs-core) for the core functionality.
 * [zwoasi](https://github.com/stevemarple/python-zwoasi/) as a Python wrapper for the ASI SDK.
 * [Astropy](http://www.astropy.org/) for FITS file handling.
 * [NumPy](http://www.numpy.org/) for array handling.

@@ -13,8 +13,7 @@ dependencies = [
 
 [project.optional-dependencies]
 gui = [
-    "qfitswidget>=0.13.1",
-    "pyside6>=6.11.0",
+    "pyobs-core[gui]>=2.0.0.dev1,<3",
     "qasync>=0.28.0",
 ]
 

@@ -2020,9 +2020,8 @@ dependencies = [
 
 [package.optional-dependencies]
 gui = [
-    { name = "pyside6" },
+    { name = "pyobs-core", extra = ["gui"] },
     { name = "qasync" },
-    { name = "qfitswidget" },
 ]
 
 [package.dev-dependencies]
@@ -2037,9 +2036,8 @@ dev = [
 requires-dist = [
     { name = "numpy", specifier = ">=2.2.5,<3" },
     { name = "pyobs-core", specifier = ">=2.0.0.dev1,<3" },
-    { name = "pyside6", marker = "extra == 'gui'", specifier = ">=6.11.0" },
+    { name = "pyobs-core", extras = ["gui"], marker = "extra == 'gui'", specifier = ">=2.0.0.dev1,<3" },
     { name = "qasync", marker = "extra == 'gui'", specifier = ">=0.28.0" },
-    { name = "qfitswidget", marker = "extra == 'gui'", specifier = ">=0.13.1" },
     { name = "zwoasi", specifier = ">=0.2.0" },
 ]
 provides-extras = ["gui"]
@@ -2087,6 +2085,13 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ca/1f/f3ff220ff8cc908198a130f98aacb2bd0c9963befd9d0757bcff13800f84/pyobs_core-2.0.0.dev6.tar.gz", hash = "sha256:ee8f98c4299064a2383666b349cf87af98f9c3de437048e8b56dcb2817e0024b", size = 299899, upload-time = "2026-06-30T17:39:36.203Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/17/b6/3875a77f1206ef5d02d5ac43ae9fd90ba96be7857fe4308dfc0c599eec16/pyobs_core-2.0.0.dev6-py3-none-any.whl", hash = "sha256:542a78b069cac525cc72b9fc5fce8983629f8f0a240ff5ee722617886a8c9c13", size = 508486, upload-time = "2026-06-30T17:39:34.739Z" },
+]
+
+[package.optional-dependencies]
+gui = [
+    { name = "pyside6" },
+    { name = "qfitswidget" },
+    { name = "qtpy" },
 ]
 
 [[package]]

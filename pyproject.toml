@@ -11,6 +11,16 @@ dependencies = [
     "zwoasi>=0.2.0",
 ]
 
+[project.optional-dependencies]
+gui = [
+    "qfitswidget>=0.13.1",
+    "pyside6>=6.11.0",
+    "qasync>=0.28.0",
+]
+
+[project.scripts]
+asi-gui = 'pyobs_asi.gui:main'
+
 [dependency-groups]
 dev = [
     "black>=25.1.0,<26",

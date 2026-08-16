@@ -7,8 +7,10 @@ Hardware I/O (opening a camera, exposing, reading out) is out of scope here.
 
 import asyncio
 import threading
+from unittest.mock import AsyncMock
 
 import pytest
+from pyobs.interfaces import IBinning, IGain, IWindow
 from pyobs.utils.enums import ImageFormat
 
 from pyobs_asi import AsiCamera, AsiCoolCamera
@@ -34,29 +36,59 @@ def test_cool_camera_default_setpoint() -> None:
 @pytest.mark.asyncio
 async def test_set_window() -> None:
     camera = AsiCamera(camera="test")
+    camera.comm.set_state = AsyncMock()  # type: ignore[method-assign]
+
     await camera.set_window(10, 20, 100, 200)
+
     assert camera._window == (10, 20, 100, 200)
+    assert camera.comm.set_state.await_args is not None
+    interface, state = camera.comm.set_state.await_args.args
+    assert interface is IWindow
+    assert (state.x, state.y, state.width, state.height) == (10, 20, 100, 200)
 
 
 @pytest.mark.asyncio
 async def test_set_binning() -> None:
     camera = AsiCamera(camera="test")
-    await camera.set_binning(2, 2)
+    camera.comm.set_state = AsyncMock()  # type: ignore[method-assign]
+
+    await camera.set_binning(2, 3)
+
+    # only x is tracked as the scalar binning factor; both axes still go out in the state
     assert camera._binning == 2
+    assert camera.comm.set_state.await_args is not None
+    interface, state = camera.comm.set_state.await_args.args
+    assert interface is IBinning
+    assert (state.x, state.y) == (2, 3)
 
 
 @pytest.mark.asyncio
 async def test_set_gain() -> None:
     camera = AsiCamera(camera="test")
+    camera.comm.set_state = AsyncMock()  # type: ignore[method-assign]
+
     await camera.set_gain(5.0)
+
+    # offset is untouched, but the published state still carries the last-known offset
     assert camera._gain == 5.0
+    assert camera.comm.set_state.await_args is not None
+    interface, state = camera.comm.set_state.await_args.args
+    assert interface is IGain
+    assert (state.gain, state.offset) == (5.0, camera._gain_offset)
 
 
 @pytest.mark.asyncio
 async def test_set_offset() -> None:
     camera = AsiCamera(camera="test")
+    camera.comm.set_state = AsyncMock()  # type: ignore[method-assign]
+
     await camera.set_offset(25.0)
+
     assert camera._gain_offset == 25.0
+    assert camera.comm.set_state.await_args is not None
+    interface, state = camera.comm.set_state.await_args.args
+    assert interface is IGain
+    assert (state.gain, state.offset) == (camera._gain, 25.0)
 
 
 @pytest.mark.asyncio

@@ -12,6 +12,7 @@ import zwoasi as asi  # type: ignore
 from numpy.typing import NDArray
 from pyobs.images import Image
 from pyobs.interfaces import (
+    Binning,
     BinningCapabilities,
     BinningState,
     CoolingState,
@@ -188,7 +189,7 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
         if "SupportedBins" in self._camera_info:
             await self.comm.set_capabilities(
                 IBinning,
-                BinningCapabilities(binnings=[BinningState(x=b, y=b) for b in self._camera_info["SupportedBins"]]),
+                BinningCapabilities(binnings=[Binning(x=b, y=b) for b in self._camera_info["SupportedBins"]]),
             )
         await self.comm.set_capabilities(IImageFormat, ImageFormatCapabilities(image_formats=list(FORMATS.keys())))
 

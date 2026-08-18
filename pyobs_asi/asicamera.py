@@ -84,14 +84,25 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
         self._gain: float = 1.0
         self._gain_offset: float = 50.0
 
+        # The ASI SDK is not thread-safe: the 5s temperature poll and in-progress exposure
+        # threads would otherwise hit the same camera handle concurrently.
+        self._sdk_lock = threading.Lock()
+
         self.add_background_task(self._temperature_thread, True)
 
     @staticmethod
-    async def _run_blocking(func: Callable[[], None], timeout: float = _SDK_CALL_TIMEOUT) -> bool:
+    async def _run_blocking(
+        func: Callable[[], None], timeout: float = _SDK_CALL_TIMEOUT, lock: threading.Lock | None = None
+    ) -> bool:
         """Run a blocking ASI SDK call in a daemon thread, so a hung call can't freeze the module.
 
         A plain executor isn't used here, since its worker threads are non-daemon and Python joins
         them on interpreter shutdown -- a hung call would then just move the freeze to process exit.
+
+        Args:
+            func: The blocking call to run.
+            timeout: How long to wait for func to complete.
+            lock: Optional lock to hold while func runs, guarding SDK access against other threads.
 
         Returns:
             True if func completed within timeout, False if it's still running in the background.
@@ -101,7 +112,11 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
 
         def _wrapper() -> None:
             try:
-                func()
+                if lock is not None:
+                    with lock:
+                        func()
+                else:
+                    func()
             finally:
                 loop.call_soon_threadsafe(future.set_result, None)
 
@@ -112,13 +127,20 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
         except TimeoutError:
             return False
 
-    async def _run_blocking_or_raise(self, func: Callable[[], _T], timeout: float = _SDK_CALL_TIMEOUT) -> _T:
+    async def _run_blocking_or_raise(
+        self, func: Callable[[], _T], timeout: float = _SDK_CALL_TIMEOUT, lock: threading.Lock | None = None
+    ) -> _T:
         """Run a blocking ASI SDK call in a thread, returning its result or re-raising what it raised.
 
         Unlike _run_blocking(), this also carries the callable's return value/exception back to the
         caller -- several ASI calls here drive control flow via their return value or a raised
         ValueError (e.g. camera lookup by name, exposure status), which a bare fire-and-forget
         thread call would otherwise silently lose.
+
+        Args:
+            func: The blocking call to run.
+            timeout: How long to wait for func to complete.
+            lock: Optional lock to hold while func runs, guarding SDK access against other threads.
         """
         outcome: list[Any] = []
 
@@ -128,7 +150,7 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
             except BaseException as e:
                 outcome.append(e)
 
-        if not await self._run_blocking(_wrapper, timeout=timeout):
+        if not await self._run_blocking(_wrapper, timeout=timeout, lock=lock):
             raise TimeoutError(f"Timed out waiting for ASI SDK call after {timeout}s.")
         value = outcome[0]
         if isinstance(value, BaseException):
@@ -170,7 +192,7 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
             left, top, width, height = self._camera.get_roi()
             return camera_info, binning, (left, top, width, height)
 
-        self._camera_info, self._binning, self._window = await self._run_blocking_or_raise(_open)
+        self._camera_info, self._binning, self._window = await self._run_blocking_or_raise(_open, lock=self._sdk_lock)
 
         log.info("Camera info:")
         for key, val in self._camera_info.items():
@@ -295,14 +317,16 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
             camera.set_control_value(asi.ASI_OFFSET, int(self._gain_offset))
             camera.start_exposure()
 
-        await self._run_blocking_or_raise(_start)
+        await self._run_blocking_or_raise(_start, lock=self._sdk_lock)
         await asyncio.sleep(0.01)
 
         # wait for image -- runs the whole poll loop as a single blocking call (see _run_blocking),
-        # rather than polling get_exposure_status() every 10ms directly on the event loop
+        # rather than polling get_exposure_status() every 10ms directly on the event loop. The SDK
+        # lock is taken per get_exposure_status() call here, so the temperature poll can interleave.
         def _wait() -> Any:
             while True:
-                exposure_status = camera.get_exposure_status()
+                with self._sdk_lock:
+                    exposure_status = camera.get_exposure_status()
                 if exposure_status != asi.ASI_EXP_WORKING or abort_event.is_set():
                     return exposure_status
                 time.sleep(0.01)
@@ -311,6 +335,7 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
         status = await self._run_blocking_or_raise(_wait, timeout=exposure_timeout)
 
         if abort_event.is_set():
+            await self._run_blocking_or_raise(camera.stop_exposure, lock=self._sdk_lock)
             await self._change_exposure_status(ExposureStatus.IDLE)
             raise InterruptedError("Aborted exposure.")
         if status != asi.ASI_EXP_SUCCESS:
@@ -324,7 +349,7 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
             whbi = camera.get_roi_format()
             return buffer, whbi
 
-        buffer, whbi = await self._run_blocking_or_raise(_readout, timeout=_READOUT_TIMEOUT)
+        buffer, whbi = await self._run_blocking_or_raise(_readout, timeout=_READOUT_TIMEOUT, lock=self._sdk_lock)
 
         # decide on image format
         shape = [whbi[1], whbi[0]]
@@ -406,7 +431,7 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
         def _get() -> float:
             return camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10  # type: ignore[union-attr]
 
-        return await self._run_blocking_or_raise(_get)
+        return await self._run_blocking_or_raise(_get, lock=self._sdk_lock)
 
     async def set_gain(self, gain: float, **kwargs: Any) -> None:
         """Set the camera gain.
@@ -470,7 +495,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
             power = camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0]
             return bool(enabled), float(setpoint), float(power)
 
-        return await self._run_blocking_or_raise(_get)
+        return await self._run_blocking_or_raise(_get, lock=self._sdk_lock)
 
     async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
         """Enables/disables cooling and sets setpoint.
@@ -495,7 +520,7 @@ class AsiCoolCamera(AsiCamera, ICooling):
                 log.info("Disabling cooling...")
                 camera.set_control_value(asi.ASI_COOLER_ON, 0)
 
-        await self._run_blocking_or_raise(_set)
+        await self._run_blocking_or_raise(_set, lock=self._sdk_lock)
 
         enabled_status, setpoint_status, power = await self._get_cooling_status()
         await self.comm.set_state(

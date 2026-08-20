@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from typing import Any
 
 import numpy as np
 import qasync  # type: ignore
@@ -25,12 +26,10 @@ FORMATS = {
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, camera_id: int) -> None:
+    def __init__(self, camera: asi.Camera, camera_info: dict[str, Any]) -> None:
         super().__init__()
 
-        self.camera = asi.Camera(camera_id)
-        self.camera.disable_dark_subtract()
-        camera_info = self.camera.get_camera_property()
+        self.camera = camera
 
         self.central_widget = QtWidgets.QWidget()
         self.setCentralWidget(self.central_widget)
@@ -66,23 +65,31 @@ class MainWindow(QtWidgets.QMainWindow):
         left, top, width, height = self.window_widget.values
         binning = self.window_widget.binning[0]
         image_type = FORMATS[self.format_widget.value]
+        loop = asyncio.get_running_loop()
 
-        self.camera.set_roi(left, top, width, height, bins=binning, image_type=image_type)
-        self.camera.set_control_value(asi.ASI_EXPOSURE, int(self.exposure_time.value * 1e6))
-
+        # WindowingWidget already returns binned coordinates (its maxima are the binned
+        # dimensions), and set_roi works in binned units too, so no further division is needed.
         self.expose.start_exposure(self.exposure_time.value)
-        self.camera.start_exposure()
 
-        while self.camera.get_exposure_status() == asi.ASI_EXP_WORKING:
+        def _start() -> None:
+            self.camera.set_roi(left, top, width, height, bins=binning, image_type=image_type)
+            self.camera.set_control_value(asi.ASI_EXPOSURE, int(self.exposure_time.value * 1e6))
+            self.camera.start_exposure()
+
+        await loop.run_in_executor(None, _start)
+
+        def _get_status() -> int:
+            return self.camera.get_exposure_status()
+
+        while await loop.run_in_executor(None, _get_status) == asi.ASI_EXP_WORKING:
             if self.abort_exposure.is_set():
-                self.camera.stop_exposure()
+                await loop.run_in_executor(None, self.camera.stop_exposure)
                 break
             await event_wait(self.abort_exposure, 0.1)
 
         if not self.abort_exposure.is_set():
-            loop = asyncio.get_running_loop()
             buffer = await loop.run_in_executor(None, self.camera.get_data_after_exposure)
-            whbi = self.camera.get_roi_format()
+            whbi = await loop.run_in_executor(None, self.camera.get_roi_format)
             shape = [whbi[1], whbi[0]]
             dtype = np.uint8 if image_type == asi.ASI_IMG_RAW8 else np.uint16
             data = np.frombuffer(buffer, dtype=dtype).reshape(shape)
@@ -97,24 +104,40 @@ class MainWindow(QtWidgets.QMainWindow):
     async def _abort_clicked(self) -> None:
         self.abort_exposure.set()
 
+    def closeEvent(self, event) -> None:  # type: ignore[override]
+        self.camera.close()
+        super().closeEvent(event)
+
 
 async def async_main(app: QtWidgets.QApplication) -> None:
     sdk_path = sys.argv[1] if len(sys.argv) > 1 else "/usr/local/lib/libASICamera2.so"
-    asi.init(sdk_path)
+    loop = asyncio.get_running_loop()
 
-    if asi.get_num_cameras() == 0:
+    def _init() -> int:
+        asi.init(sdk_path)
+        return asi.get_num_cameras()
+
+    if await loop.run_in_executor(None, _init) == 0:
         print("No devices found. Exiting...")
         return
-    cameras_found = asi.list_cameras()
+    cameras_found = await loop.run_in_executor(None, asi.list_cameras)
     device_picker = ListPickerDialog(cameras_found)
     if device_picker.exec() != QtWidgets.QDialog.DialogCode.Accepted:
         print("No device selected. Exiting...")
         return
     camera_id = device_picker.comboBox().currentIndex()
 
+    def _open_camera() -> asi.Camera:
+        camera = asi.Camera(camera_id)
+        camera.disable_dark_subtract()
+        return camera
+
+    camera = await loop.run_in_executor(None, _open_camera)
+    camera_info = await loop.run_in_executor(None, camera.get_camera_property)
+
     app_close_event = asyncio.Event()
     app.aboutToQuit.connect(app_close_event.set)
-    main_window = MainWindow(camera_id)
+    main_window = MainWindow(camera, camera_info)
     main_window.show()
     await app_close_event.wait()
 

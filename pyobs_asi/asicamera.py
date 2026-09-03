@@ -396,6 +396,7 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
 
         image.header["DET-PIXL"] = (self._camera_info["PixelSize"] / 1000.0, "Size of detector pixels (square) [mm]")
         image.header["DET-GAIN"] = (self._camera_info["ElecPerADU"] * self._gain, "Detector gain [e-/ADU]")
+        image.header["OFFSET"] = (self._gain_offset, "Black-level offset used for exposure")
 
         if image_format in [asi.ASI_IMG_RAW8, asi.ASI_IMG_RAW16]:
             image.header["BAYERPAT"] = image.header["COLORTYP"] = ("GBRG", "Bayer pattern for colors")
@@ -483,6 +484,13 @@ class AsiCoolCamera(AsiCamera, ICooling):
         await super()._publish_temperatures()
         enabled, setpoint, power = await self._get_cooling_status()
         await self.comm.set_state(ICooling, CoolingState(setpoint=setpoint, power=int(power), enabled=enabled))
+
+    async def add_custom_fits_headers(self, image: Image) -> None:
+        """Add cooling headers on top of AsiCamera's."""
+        await super().add_custom_fits_headers(image)
+        _, setpoint, power = await self._get_cooling_status()
+        image.header["DET-COOL"] = (int(power), "Cooler power [percent]")
+        image.header["DET-TSET"] = (setpoint, "Cooler setpoint [C]")
 
     async def _get_cooling_status(self) -> tuple[bool, float, float]:
         if self._camera is None:

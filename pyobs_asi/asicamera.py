@@ -198,7 +198,9 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
         for key, val in self._camera_info.items():
             log.info("  - %s: %s", key, val)
 
-        # publish capabilities before super().open()
+        await BaseCamera.open(self)
+
+        # publish capabilities
         await self.comm.set_capabilities(
             IWindow,
             WindowCapabilities(
@@ -214,8 +216,6 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
                 BinningCapabilities(binnings=[Binning(x=b, y=b) for b in self._camera_info["SupportedBins"]]),
             )
         await self.comm.set_capabilities(IImageFormat, ImageFormatCapabilities(image_formats=list(FORMATS.keys())))
-
-        await BaseCamera.open(self)
 
         # publish initial states
         await self.comm.set_state(IWindow, WindowState(*self._window))

@@ -223,6 +223,13 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
         await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
         await self.comm.set_state(IImageFormat, ImageFormatState(image_format=self._image_format))
 
+    async def reset(self, **kwargs: Any) -> None:
+        """Reset gain, offset and image format to their defaults."""
+        await BaseCamera.reset(self, **kwargs)
+        await self.set_gain(1.0)
+        await self.set_offset(50.0)
+        await self.set_image_format(ImageFormat.INT16)
+
     async def _temperature_thread(self) -> None:
         """Periodically publishes temperature (and cooling) readings."""
         while True:
@@ -478,6 +485,9 @@ class AsiCoolCamera(AsiCamera, ICooling):
         if not self._camera_info["IsCoolerCam"]:
             raise ValueError("Camera has no support for cooling.")
 
+    async def full_reset(self, **kwargs: Any) -> None:
+        """Reset the device completely, including cooling."""
+        await self.reset(**kwargs)
         await self.set_cooling(True, self._temp_setpoint)
 
     async def _publish_temperatures(self) -> None:

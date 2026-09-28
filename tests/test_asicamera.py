@@ -106,6 +106,33 @@ async def test_set_image_format_invalid() -> None:
 
 
 @pytest.mark.asyncio
+async def test_reset_restores_gain_offset_image_format() -> None:
+    camera = AsiCamera(camera="test")
+    camera.comm.set_state = AsyncMock()  # type: ignore[method-assign]
+    camera._gain = 5.0
+    camera._gain_offset = 10.0
+    camera._image_format = ImageFormat.RGB24
+
+    await camera.reset()
+
+    assert camera._gain == 1.0
+    assert camera._gain_offset == 50.0
+    assert camera._image_format == ImageFormat.INT16
+
+
+@pytest.mark.asyncio
+async def test_full_reset_restores_cooling() -> None:
+    camera = AsiCoolCamera(camera="test", setpoint=-15)
+    camera.reset = AsyncMock()  # type: ignore[method-assign]
+    camera.set_cooling = AsyncMock()  # type: ignore[method-assign]
+
+    await camera.full_reset()
+
+    camera.reset.assert_awaited_once()
+    camera.set_cooling.assert_awaited_once_with(True, -15)
+
+
+@pytest.mark.asyncio
 async def test_run_blocking_runs_func_and_returns_true() -> None:
     ran: list[bool] = []
 

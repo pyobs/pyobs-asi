@@ -54,7 +54,9 @@ Available classes
 *****************
 
 There are two classes for ASI ZWO cameras: :class:`~pyobs_asi.AsiCamera` for cameras without cooling, and
-:class:`~pyobs_asi.AsiCoolCamera` for cameras with cooling support.
+:class:`~pyobs_asi.AsiCoolCamera` for cameras with cooling support. :class:`~pyobs_asi.AsiVideo` streams
+video from an ASI camera instead, e.g. for acquisition, guiding or focusing. Only one of them can use a camera at a
+time.
 
 AsiCamera
 =========
@@ -65,5 +67,11 @@ AsiCamera
 AsiCoolCamera
 =============
 .. autoclass:: pyobs_asi.AsiCoolCamera
+   :members:
+   :show-inheritance:
+
+AsiVideo
+========
+.. autoclass:: pyobs_asi.AsiVideo
    :members:
    :show-inheritance:

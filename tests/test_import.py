@@ -5,10 +5,10 @@ zwoasi imports cleanly with no SDK present (it logs "ASI SDK library not found" 
 degrades), so no camera is needed at import/instantiate time.
 """
 
-from pyobs.interfaces import IBinning, ICooling, IGain, IImageFormat, ITemperatures, IWindow
+from pyobs.interfaces import IBinning, ICooling, IExposureTime, IGain, IImageFormat, ITemperatures, IVideo, IWindow
 from pyobs.modules import Module
 
-from pyobs_asi import AsiCamera, AsiCoolCamera
+from pyobs_asi import AsiCamera, AsiCoolCamera, AsiVideo
 
 
 def test_instantiate_asicamera() -> None:
@@ -25,3 +25,14 @@ def test_instantiate_asicoolcamera() -> None:
     camera = AsiCoolCamera(camera="ZWO ASI1600MM Pro")
     assert isinstance(camera, ICooling)
     assert isinstance(camera, ITemperatures)
+
+
+def test_instantiate_asivideo() -> None:
+    video = AsiVideo(camera="ZWO ASI1600MM Pro")
+    assert isinstance(video, Module)
+    assert isinstance(video, IVideo)
+    assert isinstance(video, IExposureTime)
+    assert isinstance(video, IWindow)
+    assert isinstance(video, IBinning)
+    assert isinstance(video, IImageFormat)
+    assert isinstance(video, IGain)

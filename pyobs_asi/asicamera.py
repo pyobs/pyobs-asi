@@ -3,9 +3,8 @@ import logging
 import math
 import threading
 import time
-from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import numpy as np
 import zwoasi as asi  # type: ignore
@@ -34,20 +33,15 @@ from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus, ImageFormat
 
-log = logging.getLogger(__name__)
+from .blocking import BlockingSdkMixin
 
-_T = TypeVar("_T")
+log = logging.getLogger(__name__)
 
 FORMATS = {
     ImageFormat.INT8: asi.ASI_IMG_RAW8,
     ImageFormat.INT16: asi.ASI_IMG_RAW16,
     ImageFormat.RGB24: asi.ASI_IMG_RGB24,
 }
-
-# ZWO ASI SDK calls are blocking and are made directly on the event loop thread (see
-# _run_blocking). If the camera has gone unresponsive, they can hang indefinitely, so they're
-# bounded with a timeout rather than let a single dead camera freeze the whole module.
-_SDK_CALL_TIMEOUT = 5.0
 
 # reading out a frame after exposure can take longer than the other SDK calls above, depending on
 # sensor resolution/image format.
@@ -58,7 +52,7 @@ _READOUT_TIMEOUT = 30.0
 _EXPOSURE_WAIT_MARGIN = 30.0
 
 
-class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperatures):
+class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperatures):
     """A pyobs module for ASI cameras."""
 
     __module__ = "pyobs_asi"
@@ -89,73 +83,6 @@ class AsiCamera(BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperature
         self._sdk_lock = threading.Lock()
 
         self.add_background_task(self._temperature_thread, True)
-
-    @staticmethod
-    async def _run_blocking(
-        func: Callable[[], None], timeout: float = _SDK_CALL_TIMEOUT, lock: threading.Lock | None = None
-    ) -> bool:
-        """Run a blocking ASI SDK call in a daemon thread, so a hung call can't freeze the module.
-
-        A plain executor isn't used here, since its worker threads are non-daemon and Python joins
-        them on interpreter shutdown -- a hung call would then just move the freeze to process exit.
-
-        Args:
-            func: The blocking call to run.
-            timeout: How long to wait for func to complete.
-            lock: Optional lock to hold while func runs, guarding SDK access against other threads.
-
-        Returns:
-            True if func completed within timeout, False if it's still running in the background.
-        """
-        loop = asyncio.get_running_loop()
-        future: asyncio.Future[None] = loop.create_future()
-
-        def _wrapper() -> None:
-            try:
-                if lock is not None:
-                    with lock:
-                        func()
-                else:
-                    func()
-            finally:
-                loop.call_soon_threadsafe(future.set_result, None)
-
-        threading.Thread(target=_wrapper, daemon=True).start()
-        try:
-            await asyncio.wait_for(future, timeout=timeout)
-            return True
-        except TimeoutError:
-            return False
-
-    async def _run_blocking_or_raise(
-        self, func: Callable[[], _T], timeout: float = _SDK_CALL_TIMEOUT, lock: threading.Lock | None = None
-    ) -> _T:
-        """Run a blocking ASI SDK call in a thread, returning its result or re-raising what it raised.
-
-        Unlike _run_blocking(), this also carries the callable's return value/exception back to the
-        caller -- several ASI calls here drive control flow via their return value or a raised
-        ValueError (e.g. camera lookup by name, exposure status), which a bare fire-and-forget
-        thread call would otherwise silently lose.
-
-        Args:
-            func: The blocking call to run.
-            timeout: How long to wait for func to complete.
-            lock: Optional lock to hold while func runs, guarding SDK access against other threads.
-        """
-        outcome: list[Any] = []
-
-        def _wrapper() -> None:
-            try:
-                outcome.append(func())
-            except BaseException as e:
-                outcome.append(e)
-
-        if not await self._run_blocking(_wrapper, timeout=timeout, lock=lock):
-            raise TimeoutError(f"Timed out waiting for ASI SDK call after {timeout}s.")
-        value = outcome[0]
-        if isinstance(value, BaseException):
-            raise value
-        return cast(_T, value)
 
     async def open(self) -> None:
         """Open module."""

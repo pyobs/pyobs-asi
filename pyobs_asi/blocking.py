@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import threading
 from collections.abc import Callable
-from typing import Any, Optional, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 _T = TypeVar("_T")
 
@@ -16,7 +18,7 @@ class BlockingSdkMixin:
 
     @staticmethod
     async def _run_blocking(
-        func: Callable[[], None], timeout: float = SDK_CALL_TIMEOUT, lock: Optional[threading.Lock] = None
+        func: Callable[[], None], timeout: float = SDK_CALL_TIMEOUT, lock: threading.Lock | None = None
     ) -> bool:
         """Run a blocking ASI SDK call in a daemon thread, so a hung call can't freeze the module.
 
@@ -61,7 +63,7 @@ class BlockingSdkMixin:
             return False
 
     async def _run_blocking_or_raise(
-        self, func: Callable[[], _T], timeout: float = SDK_CALL_TIMEOUT, lock: Optional[threading.Lock] = None
+        self, func: Callable[[], _T], timeout: float = SDK_CALL_TIMEOUT, lock: threading.Lock | None = None
     ) -> _T:
         """Run a blocking ASI SDK call in a thread, returning its result or re-raising what it raised.
 

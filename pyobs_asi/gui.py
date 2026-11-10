@@ -69,12 +69,9 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             layout.addWidget(self.gain_offset)
 
-        # optional, the ASI2600MM Pro shows odd pixels at the sensor edges in this mode (SDK 1.41)
-        self.high_speed: QtWidgets.QCheckBox | None = None
+        # high speed mode gives odd edge pixels on the ASI2600MM Pro and the camera may keep the setting, so reset it
         if "HighSpeedMode" in controls:
-            self.high_speed = QtWidgets.QCheckBox("High speed mode")
-            self.high_speed.setChecked(False)
-            layout.addWidget(self.high_speed)
+            camera.set_control_value(asi.ASI_HIGH_SPEED_MODE, 0)
 
         self.cooling: CoolingWidget | None = None
         if "CoolerOn" in controls and "TargetTemp" in controls:
@@ -134,11 +131,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.expose.start_exposure(exposure_us / 1e6)
 
         gain_offset = self.gain_offset
-        high_speed = self.high_speed.isChecked() if self.high_speed is not None else None
 
         def _start() -> None:
-            if high_speed is not None:
-                self.camera.set_control_value(asi.ASI_HIGH_SPEED_MODE, int(high_speed))
             if gain_offset is not None:
                 self.camera.set_control_value(asi.ASI_GAIN, gain_offset.gain)
                 self.camera.set_control_value(asi.ASI_OFFSET, gain_offset.offset)

@@ -21,9 +21,10 @@ from pyobs.utils.gui.camera.windowingwidget import WindowingWidget
 from pyobs.utils.parallel import event_wait
 from PySide6 import QtCore, QtWidgets  # type: ignore[import-untyped]
 
+# the first entry is the default in the GUI
 FORMATS = {
-    ImageFormat.INT8: asi.ASI_IMG_RAW8,
     ImageFormat.INT16: asi.ASI_IMG_RAW16,
+    ImageFormat.INT8: asi.ASI_IMG_RAW8,
 }
 
 

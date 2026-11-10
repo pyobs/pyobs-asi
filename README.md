@@ -6,8 +6,25 @@ This is a [pyobs](https://www.pyobs.org) module for [ZWO ASI](https://astronomy-
 
 ASI SDK
 -------
-Download the ASI SDK from https://astronomy-imaging-camera.com/software-drivers and install the libraries from the
-appropriate folder in `lib/` to `/usr/local/lib`. Then copy `asi.rules` to `/etc/udev/rules.d/99-asi.rules`.
+The Linux libraries of the ASI SDK 1.41 (`armv6`, `armv7`, `armv8`, `x64`, `x86`) and `asi.rules` are included in the
+`sdk/` folder, as published by ZWO under the license in `sdk/license.txt`. See
+https://www.zwoastro.com/software/product-sdk/ for the official download and newer versions. Do not use the 1.37
+libraries from third-party repositories, they return corrupt frames on the ASI2600MM Pro.
+
+Install the library for your platform to `/usr/local/lib` and update the linker cache, e.g. on x86-64:
+
+    sudo install sdk/x64/libASICamera2.so.1.41 /usr/local/lib
+    sudo ln -sf libASICamera2.so.1.41 /usr/local/lib/libASICamera2.so
+    sudo ldconfig
+
+Then install the udev rules and reconnect the camera:
+
+    sudo install sdk/asi.rules /etc/udev/rules.d/99-asi.rules
+    sudo udevadm control --reload && sudo udevadm trigger
+
+The rules also set `usbfs_memory_mb` to 200, which large sensors need. Check it with
+`cat /sys/module/usbcore/parameters/usbfs_memory_mb`. Instead of installing the library, you can also pass its path
+to the `sdk` parameter of the camera (see below).
 
 
 Install *pyobs-asi*

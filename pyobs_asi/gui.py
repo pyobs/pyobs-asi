@@ -1,5 +1,6 @@
 import asyncio
 import sys
+import traceback
 from typing import Any
 
 import numpy as np
@@ -121,7 +122,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @qasync.asyncSlot()  # type: ignore
     async def _expose_clicked(self) -> None:
+        try:
+            await self._expose()
+        except Exception:
+            # don't leave the GUI in the exposing state
+            traceback.print_exc()
+        finally:
+            self.abort_exposure = asyncio.Event()
+            self.expose.set_exposures_left()
+
+    async def _expose(self) -> None:
         left, top, width, height = self.window_widget.values
+        # the SDK needs a width that is a multiple of 8 and a height that is a multiple of 2
+        width = max(8, width // 8 * 8)
+        height = max(2, height // 2 * 2)
         binning = self.window_widget.binning[0]
         image_type = FORMATS[self.format_widget.value]
         loop = asyncio.get_running_loop()
@@ -156,8 +170,6 @@ class MainWindow(QtWidgets.QMainWindow):
             status = await loop.run_in_executor(None, _get_status)
             if status != asi.ASI_EXP_SUCCESS:
                 print(f"Exposure failed (status {status}), discarding frame.")
-                self.abort_exposure = asyncio.Event()
-                self.expose.set_exposures_left()
                 return
             buffer = await loop.run_in_executor(None, self.camera.get_data_after_exposure)
             whbi = await loop.run_in_executor(None, self.camera.get_roi_format)
@@ -167,15 +179,10 @@ class MainWindow(QtWidgets.QMainWindow):
             print(f"Frame: min={data.min()} max={data.max()} mean={data.mean():.1f}")
             if data.max() == 0:
                 print("Frame contains only zeros, discarding it.")
-                self.abort_exposure = asyncio.Event()
-                self.expose.set_exposures_left()
                 return
 
             image = fits.PrimaryHDU(data)
             self.data_display_widget.set_data(image)
-
-        self.abort_exposure = asyncio.Event()
-        self.expose.set_exposures_left()
 
     @qasync.asyncSlot()  # type: ignore
     async def _abort_clicked(self) -> None:

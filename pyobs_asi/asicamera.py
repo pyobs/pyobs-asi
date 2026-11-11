@@ -9,6 +9,7 @@ from typing import Any, cast
 import numpy as np
 import zwoasi as asi  # type: ignore
 from numpy.typing import NDArray
+from pyobs.events import ModeChangedEvent
 from pyobs.images import Image
 from pyobs.interfaces import (
     Binning,
@@ -22,8 +23,11 @@ from pyobs.interfaces import (
     IImageFormat,
     ImageFormatCapabilities,
     ImageFormatState,
+    IMode,
     ITemperatures,
     IWindow,
+    ModeCapabilities,
+    ModeState,
     SensorReading,
     TemperaturesState,
     WindowCapabilities,
@@ -34,6 +38,7 @@ from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus, ImageFormat
 
 from .blocking import BlockingSdkMixin
+from .presets import GAIN_GROUP, PRESETS, CameraPreset, detector_gain
 
 log = logging.getLogger(__name__)
 
@@ -52,17 +57,31 @@ _READOUT_TIMEOUT = 30.0
 _EXPOSURE_WAIT_MARGIN = 30.0
 
 
-class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, IGain, ITemperatures):
-    """A pyobs module for ASI cameras."""
+class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, IGain, IMode, ITemperatures):
+    """A pyobs module for ASI cameras.
+
+    For cameras with a preset (see presets.py) the gain and offset are set by the group ``Gain`` of IMode, e.g. the
+    modes ``Low noise`` and ``High capacity`` of the ASI2600MM Pro.
+    """
 
     __module__ = "pyobs_asi"
 
-    def __init__(self, camera: str, sdk: str = "/usr/local/lib/libASICamera2.so", **kwargs: Any):
+    def __init__(
+        self,
+        camera: str,
+        sdk: str = "/usr/local/lib/libASICamera2.so",
+        gain: float | None = None,
+        offset: float | None = None,
+        **kwargs: Any,
+    ):
         """Initializes a new AsiCamera.
 
         Args:
             camera: Name of camera to use.
             sdk: Path to .so file from ASI SDK.
+            gain: Gain at start-up and after a reset. Default: the default mode of the camera preset, or the default
+                gain of the camera if there is no preset.
+            offset: Offset at start-up and after a reset, same defaults as the gain.
         """
         BaseCamera.__init__(self, **kwargs)
 
@@ -75,8 +94,14 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
         self._binning = 1
         self._image_format = ImageFormat.INT16
 
-        self._gain: float = 1.0
-        self._gain_offset: float = 50.0
+        # gain and offset: given value, else default mode of the preset, else (after open) the SDK default
+        self._preset: CameraPreset | None = PRESETS.get(camera)
+        mode = self._preset.modes[self._preset.default_mode] if self._preset is not None else None
+        self._use_sdk_defaults = gain is None and offset is None and mode is None
+        self._default_gain: float = gain if gain is not None else (mode.gain if mode is not None else 1.0)
+        self._default_offset: float = offset if offset is not None else (mode.offset if mode is not None else 50.0)
+        self._gain: float = self._default_gain
+        self._gain_offset: float = self._default_offset
 
         # The ASI SDK is not thread-safe: the 5s temperature poll and in-progress exposure
         # threads would otherwise hit the same camera handle concurrently.
@@ -87,7 +112,7 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
     async def open(self) -> None:
         """Open module."""
 
-        def _open() -> tuple[dict[str, Any], int, tuple[int, int, int, int]]:
+        def _open() -> tuple[dict[str, Any], int, tuple[int, int, int, int], dict[str, Any]]:
             asi.init(self._sdk_path)
 
             num_cameras = asi.get_num_cameras()
@@ -117,9 +142,16 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
             # get initial window and binning
             binning = self._camera.get_bin()
             left, top, width, height = self._camera.get_roi()
-            return camera_info, binning, (left, top, width, height)
+            return camera_info, binning, (left, top, width, height), self._camera.get_controls()
 
-        self._camera_info, self._binning, self._window = await self._run_blocking_or_raise(_open, lock=self._sdk_lock)
+        self._camera_info, self._binning, self._window, controls = await self._run_blocking_or_raise(
+            _open, lock=self._sdk_lock
+        )
+
+        # cameras without a preset: use the defaults of the camera itself
+        if self._use_sdk_defaults and "Gain" in controls and "Offset" in controls:
+            self._default_gain = self._gain = float(controls["Gain"]["DefaultValue"])
+            self._default_offset = self._gain_offset = float(controls["Offset"]["DefaultValue"])
 
         log.info("Camera info:")
         for key, val in self._camera_info.items():
@@ -143,18 +175,36 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
                 BinningCapabilities(binnings=[Binning(x=b, y=b) for b in self._camera_info["SupportedBins"]]),
             )
         await self.comm.set_capabilities(IImageFormat, ImageFormatCapabilities(image_formats=list(FORMATS.keys())))
+        await self.comm.set_capabilities(IMode, ModeCapabilities(modes=self._mode_options()))
+        await self.comm.register_event(ModeChangedEvent)
 
         # publish initial states
         await self.comm.set_state(IWindow, WindowState(*self._window))
         await self.comm.set_state(IBinning, BinningState(x=self._binning, y=self._binning))
-        await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
+        await self._publish_gain()
         await self.comm.set_state(IImageFormat, ImageFormatState(image_format=self._image_format))
+
+    def _mode_options(self) -> dict[str, list[str]]:
+        """Mode groups and their modes, empty for cameras without a preset."""
+        return {GAIN_GROUP: list(self._preset.modes)} if self._preset is not None else {}
+
+    def _current_modes(self) -> dict[str, str]:
+        """Current mode per group, a group is missing if gain and offset do not match any of its modes."""
+        if self._preset is not None:
+            for name, mode in self._preset.modes.items():
+                if (mode.gain, mode.offset) == (self._gain, self._gain_offset):
+                    return {GAIN_GROUP: name}
+        return {}
+
+    async def _publish_gain(self) -> None:
+        await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
+        await self.comm.set_state(IMode, ModeState(modes=self._current_modes()))
 
     async def reset(self, **kwargs: Any) -> None:
         """Reset gain, offset and image format to their defaults."""
         await BaseCamera.reset(self, **kwargs)
-        await self.set_gain(1.0)
-        await self.set_offset(50.0)
+        await self.set_gain(self._default_gain)
+        await self.set_offset(self._default_offset)
         await self.set_image_format(ImageFormat.INT16)
 
     async def _temperature_thread(self) -> None:
@@ -329,7 +379,9 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
         image.header["DATAMEAN"] = (float(np.mean(data)), "Mean data value")
 
         image.header["DET-PIXL"] = (self._camera_info["PixelSize"] / 1000.0, "Size of detector pixels (square) [mm]")
-        image.header["DET-GAIN"] = (self._camera_info["ElecPerADU"] * self._gain, "Detector gain [e-/ADU]")
+        e_per_adu = detector_gain(self._preset, self._camera_info, self._gain)
+        if e_per_adu is not None:
+            image.header["DET-GAIN"] = (e_per_adu, "Detector gain [e-/ADU]")
         image.header["OFFSET"] = (self._gain_offset, "Black-level offset used for exposure")
 
         if image_format in [asi.ASI_IMG_RAW8, asi.ASI_IMG_RAW16]:
@@ -378,7 +430,7 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
             ValueError: If gain could not be set.
         """
         self._gain = gain
-        await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
+        await self._publish_gain()
 
     async def set_offset(self, offset: float, **kwargs: Any) -> None:
         """Set the camera offset.
@@ -390,7 +442,28 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
             ValueError: If offset could not be set.
         """
         self._gain_offset = offset
-        await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
+        await self._publish_gain()
+
+    async def set_mode(self, mode: str, group: str = "", **kwargs: Any) -> None:
+        """Set the gain and offset from a mode.
+
+        Args:
+            mode: Name of the mode, e.g. "Low noise" or "High capacity".
+            group: Name of the mode group, only "Gain" exists. Empty means the first group.
+
+        Raises:
+            InvalidArgumentError: If the group or the mode is unknown, or the camera has no modes.
+        """
+        options = self._mode_options()
+        group = group or next(iter(options), "")
+        if group not in options:
+            raise exc.InvalidArgumentError(f"Invalid group: {group!r}")
+        if self._preset is None or mode not in self._preset.modes:
+            raise exc.InvalidArgumentError(f"Invalid mode for group {group}: {mode!r}")
+        self._gain = self._preset.modes[mode].gain
+        self._gain_offset = self._preset.modes[mode].offset
+        await self._publish_gain()
+        await self.comm.send_event(ModeChangedEvent(group, mode))
 
 
 class AsiCoolCamera(AsiCamera, ICooling):

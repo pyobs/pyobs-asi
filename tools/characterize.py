@@ -41,7 +41,9 @@ RAMP_STEP_C = 1.0
 RAMP_STEP_S = 30.0  # together: 2 degC/min
 MAX_POWER = 90
 STABLE_RANGE_C = 0.2
-STABLE_TIME_S = 120.0
+STABLE_TIME_S = 30.0
+POLL_S = 5.0  # temperature readings while waiting for a stable sensor
+LIMIT_TIME_S = 120.0  # the cooler must be above MAX_POWER for this long before the series stops
 TARGET_JITTER_C = 1.2  # the sensor reading wobbles by about +-0.5 degC when the cooler idles near ambient
 
 GAINS = [0, 50, 100, 150, 200, 300, 400, 500, 600, 700]
@@ -161,11 +163,12 @@ def bias_pair(cam: Camera, gain: int, offset: int) -> tuple[np.ndarray, np.ndarr
 def wait_stable(cam: Camera, out: Output, target: int | None, label: str) -> None:
     """Wait until the sensor temperature stops changing (and has reached the target)."""
     history: deque[tuple[float, float]] = deque()
+    high_since: float | None = None
     while True:
         now, temp = time.time(), cam.temperature()
         out.write("templog", {"time": now, "label": label, "temp": temp, "power": cam.power(), "target": target})
         history.append((now, temp))
-        # keep slightly more than the required time, samples come every ~30 s
+        # keep slightly more than the required time, samples come every POLL_S
         while history and now - history[0][0] > STABLE_TIME_S + 5:
             history.popleft()
         temps = [t for _, t in history]
@@ -175,10 +178,14 @@ def wait_stable(cam: Camera, out: Output, target: int | None, label: str) -> Non
         tolerance = TARGET_JITTER_C if target is not None else 2.5 * STABLE_RANGE_C
         if full and at_target and max(temps) - min(temps) <= tolerance:
             return
-        if target is not None and cam.power() > MAX_POWER and full and temp - target > 1.0:
+        if target is None or cam.power() <= MAX_POWER or temp - target <= 1.0:
+            high_since = None
+        elif high_since is None:
+            high_since = now
+        if high_since is not None and now - high_since >= LIMIT_TIME_S:
             raise CoolerLimit(f"cooler at {cam.power()}% and sensor at {temp:.1f} degC, target {target} degC")
         print(f"  {label}: T={temp:.1f} degC power={cam.power()}% target={target}", flush=True)
-        time.sleep(30)
+        time.sleep(POLL_S)
 
 
 def ramp_to(cam: Camera, out: Output, target: int) -> None:
@@ -385,7 +392,7 @@ def run_temperature(cam: Camera, out: Output, temperatures: list[int], gain: int
                 out.save_cutout(f"dark_T{target}_t{int(exposure)}", da, temp=record["temp"], exptime=exposure)
                 print(
                     f"T={record['temp']:.1f} t={exposure:.0f}s bias noise={bias['noise_std_adu']:.2f} ADU "
-                    f"dark={record['dark_adu_per_s_median']:.4f} ADU/s (median) hot={hot:.5f}",
+                    f"dark={record['dark_adu_per_s_mean']:.5f} ADU/s (mean) hot={hot:.5f}",
                     flush=True,
                 )
     finally:
@@ -540,13 +547,13 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
             rows = [r for r in temp if r["exposure"] == e]
             axs[1].plot(
                 [r["temp"] for r in rows],
-                [max(r["dark_adu_per_s_median"], 1e-6) for r in rows],
+                [max(r["dark_adu_per_s_mean"], 1e-6) for r in rows],
                 "o-",
                 label=f"{e:.0f} s",
             )
             axs[2].plot([r["temp"] for r in rows], [r["hot_frac"] for r in rows], "o-", label=f"{e:.0f} s")
         axs[1].set_yscale("log")
-        axs[1].set_ylabel("dark signal, median [ADU/s/pixel]")
+        axs[1].set_ylabel("dark signal, mean [ADU/s/pixel]")
         axs[2].set_yscale("log")
         axs[2].set_ylabel("hot pixel fraction")
         for ax in axs:
@@ -556,12 +563,12 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
         fig.tight_layout()
         fig.savefig(folder / "temperature.png", dpi=110)
         lines += ["## Noise and dark current vs temperature", "", "![temperature](temperature.png)", ""]
-        lines += ["| T [degC] | exposure [s] | read noise [ADU] | dark [ADU/s] median | hot fraction |"]
+        lines += ["| T [degC] | exposure [s] | read noise [ADU] | dark [ADU/s] mean | hot fraction |"]
         lines += ["|---|---|---|---|---|"]
         for r in temp:
             lines.append(
                 f"| {r['temp']:.1f} | {r['exposure']:.0f} | {r['bias_noise_adu']:.2f} | "
-                f"{r['dark_adu_per_s_median']:.4f} | {r['hot_frac']:.5f} |"
+                f"{r['dark_adu_per_s_mean']:.5f} | {r['hot_frac']:.5f} |"
             )
         lines.append("")
 

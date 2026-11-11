@@ -155,15 +155,47 @@ Dark signal at 10 degC, gain 0: 0.23 ADU in 30 s and 2.6 ADU in 300 s (about 0.0
 about 0.007 e-/s per pixel. ZWO lists 0.0022 e/s/pixel at 0 degC (not verified); doubling every 6 degC (my assumption)
 would give about 0.007 e/s at 10 degC, so the size agrees.
 
-## Noise and dark current vs temperature
+## Noise and dark current vs temperature (measured)
 
-Pending. Cooler targets 20, 10, 0, -10, -20 degC with at most 2 degC/min, then bias pairs and 60 s and 300 s darks at
-each. The cooler was only used for the gain step so far: it held 10 degC (13% power) and warmed back with 2 degC/min.
+Cooler targets 15 to -10 degC in steps of 5 degC (setpoint moved by 1 degC every 30 s, 2 degC/min), gain 100, offset 50,
+cap on. At each target a bias pair plus 60 s and 300 s dark pairs (central 2048x2048 window). Dark current is the mean
+of the frames minus the mean of the bias frames, divided by the exposure time, in e-/s with 0.255 e-/ADU (gain 100).
+
+![Noise and dark current vs temperature](images/ASI2600MM_Pro_temperature.png)
+
+| T [degC] | Cooler power | Read noise [ADU] | Dark 60 s [e-/s] | Dark 300 s [e-/s] | Hot pixels 60 s / 300 s |
+|---|---|---|---|---|---|
+| 15 | 1% | 5.66 | 0.0118 | 0.0120 | 0.0012 / 0.0037 |
+| 10 | 10% | 5.66 | 0.0056 | 0.0056 | 0.0009 / 0.0025 |
+| 5 | 24% | 5.68 | 0.0025 | 0.0026 | 0.0006 / 0.0018 |
+| 0 | 37% | 5.67 | 0.0011 | 0.0012 | 0.0004 / 0.0015 |
+| -5 | 53% | 5.67 | 0.0004 | 0.0006 | 0.0002 / 0.0011 |
+| -10 | 70% | 5.68 | 0.00013 | 0.00028 | 0.0001 / 0.0008 |
+
+Hot pixels are the fraction of pixels more than 20 sigma (bias MAD noise) above the median of the dark frame.
+
+- Dark current doubles every 4.0 degC (60 s) to 4.6 degC (300 s) (exponential fit of the means, 15 to -10 degC).
+- Read noise does not change with temperature (5.66 to 5.68 ADU).
+- At 0 degC the dark current is 0.0011 to 0.0012 e-/s/pixel; ZWO lists 0.0022 e/s/pixel at 0 degC and 0.00012 at
+  -20 degC (not verified, I do not know whether this is a mean or a median). Our extrapolation to -20 degC is about
+  0.00006 e-/s (inference, not measured).
+- Below 0 degC the 300 s value is 1.3 to 2 times the 60 s value (0.03 ADU after 60 s, 0.34 ADU after 300 s at -10
+  degC). The cause is not known (hot pixel growth or a bias drift of 0.1 to 0.3 ADU between bias and dark frames are
+  possible), so treat the values below 0 degC as upper limits.
+- The median of the dark frame is not useful below 5 degC, because the median of integer values cannot resolve less
+  than one ADU per frame. The report uses the mean.
+- Cooling limit: at a setpoint of about -13 degC the cooler reached 95% power (a power rise of 14% to 17% per 5 degC,
+  from 70% at -10 degC), about 35 degC below the ambient of about 22 degC. The 5 degC steps to -15 and -20 degC were
+  not measured, the run was stopped by hand.
+- The sensor temperature reading wobbles by about 1 degC when the cooler is idle near ambient (power 0 to 2%), so a
+  target near ambient (20 degC) never settles. Use targets at least 5 degC below ambient.
+- Reopening the camera switches the cooler off. A warm-up script after stopping a run must switch it on again at the
+  current temperature before it ramps, otherwise the sensor warms up uncontrolled (12 degC in about 2 min seen here).
 
 ## Not done
 
-Flat-field uniformity and dust, the gain between the measured gain values, and the dependence on temperature of the
-gain and read noise.
+Flat-field uniformity and dust, the gain between the measured gain values, the dependence of the gain on temperature,
+and dark current below -10 degC (not reachable much further in this room).
 
 ## GUI (`asi-gui`)
 
@@ -171,7 +203,7 @@ gain and read noise.
 - Cooler on/off, target, and a readout of sensor temperature and cooler power every 2 s.
 - Default format INT16, exposure time clamped to the SDK minimum, window rounded to the SDK alignment.
 - A failed exposure or an all-zero frame is not shown and no longer leaves the Expose button stuck.
-- Not tested: switching the cooler on from the GUI.
+- Not tested: switching the cooler on from the GUI (the cooler itself works, tested from the script).
 
 ## Reproduce
 

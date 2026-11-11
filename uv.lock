@@ -1975,8 +1975,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = ">=2.2.5,<3" },
-    { name = "pyobs-core", specifier = ">=2.23.4,<3" },
-    { name = "pyobs-core", extras = ["gui"], marker = "extra == 'gui'", specifier = ">=2.23.4,<3" },
+    { name = "pyobs-core", specifier = ">=2.24.0,<3" },
+    { name = "pyobs-core", extras = ["gui"], marker = "extra == 'gui'", specifier = ">=2.24.0,<3" },
     { name = "qasync", marker = "extra == 'gui'", specifier = ">=0.28.0" },
     { name = "zwoasi", specifier = ">=0.2.0" },
 ]
@@ -1994,7 +1994,7 @@ dev = [
 
 [[package]]
 name = "pyobs-core"
-version = "2.23.4"
+version = "2.24.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -2014,9 +2014,9 @@ dependencies = [
     { name = "slixmpp" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ca/f3/cdcea0aa17c50d8bbbbfec8706e5ce499a1a574d3369b1296d0bce49346f/pyobs_core-2.23.4.tar.gz", hash = "sha256:ac7a676726a6a6c0b1dfebc21732d79fd2ba74bc9a742a7a008510ae845a105b", size = 464840, upload-time = "2026-11-10T13:27:37.444Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/eb/0f7aab9d264a9843a32a5cd9e6cacdeb0d90d16ff68265621d7c8bae9f51/pyobs_core-2.24.0.tar.gz", hash = "sha256:33feb1303d820f0c8f0a2861a4db0ce1955147884f88356a3a60b8cc4da66188", size = 468820, upload-time = "2026-11-11T14:27:17.866Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/a6/2ec8514b5ce1646aeaf9fd8fca92cb7513859e46aa8c8be6fde15371b10b/pyobs_core-2.23.4-py3-none-any.whl", hash = "sha256:edac61073a9f2c3d8706b435286485667d8fbd03e2420cf2658a630cc99c4de5", size = 706925, upload-time = "2026-11-10T13:27:35.569Z" },
+    { url = "https://files.pythonhosted.org/packages/11/7e/ef6b89804e32bf1de948fad15b5d7159c0e28ecfdc3fe1b7ab011e1d2551/pyobs_core-2.24.0-py3-none-any.whl", hash = "sha256:6505ecdb91cc733245fb8fbbf53681074569d3cd2a0a3cb67d13c783a0a82023", size = 711844, upload-time = "2026-11-11T14:27:15.749Z" },
 ]
 
 [package.optional-dependencies]

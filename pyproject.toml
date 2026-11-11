@@ -8,7 +8,7 @@ license = "MIT"
 readme = "README.md"
 dependencies = [
     "numpy>=2.2.5,<3",
-    "pyobs-core>=2.23.4,<3",
+    "pyobs-core>=2.24.0,<3",
     "zwoasi>=0.2.0",
 ]
 
@@ -20,7 +20,7 @@ Issues = "https://github.com/pyobs/pyobs-asi/issues"
 
 [project.optional-dependencies]
 gui = [
-    "pyobs-core[gui]>=2.23.4,<3",
+    "pyobs-core[gui]>=2.24.0,<3",
     "qasync>=0.28.0",
 ]
 

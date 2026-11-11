@@ -14,7 +14,6 @@ from pyobs.interfaces import (
     Binning,
     BinningCapabilities,
     BinningState,
-    CoolingState,
     GainState,
     IBinning,
     ICooling,
@@ -29,6 +28,7 @@ from pyobs.interfaces import (
     WindowCapabilities,
     WindowState,
 )
+from pyobs.mixins import CoolingRampMixin
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus, ImageFormat
@@ -393,16 +393,23 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
         await self.comm.set_state(IGain, GainState(gain=self._gain, offset=self._gain_offset))
 
 
-class AsiCoolCamera(AsiCamera, ICooling):
-    """A pyobs module for ASI cameras with cooling."""
+class AsiCoolCamera(CoolingRampMixin, AsiCamera, ICooling):
+    """A pyobs module for ASI cameras with cooling.
+
+    The cooling setpoint is ramped by CoolingRampMixin, see its cooling_* options (cooling_rate_warm,
+    cooling_rate_cool, cooling_ramp_step, ...).
+    """
+
+    # ASI_TARGET_TEMP is an integer
+    _cooling_setpoint_resolution = 1.0
 
     def __init__(self, setpoint: int = -20, **kwargs: Any):
         """Initializes a new AsiCoolCamera.
 
         Args:
-            setpoint: Cooling temperature setpoint.
+            setpoint: Cooling temperature setpoint that full_reset() cools to.
         """
-        AsiCamera.__init__(self, **kwargs)
+        CoolingRampMixin.__init__(self, **kwargs)
         self._temp_setpoint = setpoint
 
     async def open(self) -> None:
@@ -419,8 +426,11 @@ class AsiCoolCamera(AsiCamera, ICooling):
 
     async def _publish_temperatures(self) -> None:
         await super()._publish_temperatures()
+        await self._publish_cooling()
+
+    async def _publish_cooling(self) -> None:
         enabled, setpoint, power = await self._get_cooling_status()
-        await self.comm.set_state(ICooling, CoolingState(setpoint=setpoint, power=int(power), enabled=enabled))
+        await self.comm.set_state(ICooling, self._cooling_state(int(power), enabled, setpoint))
 
     async def add_custom_fits_headers(self, image: Image) -> None:
         """Add cooling headers on top of AsiCamera's."""
@@ -442,35 +452,28 @@ class AsiCoolCamera(AsiCamera, ICooling):
 
         return await self._run_blocking_or_raise(_get, lock=self._sdk_lock)
 
-    async def set_cooling(self, enabled: bool, setpoint: float, **kwargs: Any) -> None:
-        """Enables/disables cooling and sets setpoint.
-
-        Args:
-            enabled: Enable or disable cooling.
-            setpoint: Setpoint in celsius for the cooling.
-
-        Raises:
-            ValueError: If cooling could not be set.
-        """
+    async def _set_cooling_hardware(self, enabled: bool, setpoint: float | None) -> None:
         if self._camera is None:
             raise ValueError("No camera initialised.")
         camera = self._camera
 
         def _set() -> None:
-            if enabled:
-                log.info("Enabling cooling with a setpoint of %.2f°C...", setpoint)
+            if enabled and setpoint is not None:
                 camera.set_control_value(asi.ASI_TARGET_TEMP, int(setpoint))
                 camera.set_control_value(asi.ASI_COOLER_ON, 1)
             else:
-                log.info("Disabling cooling...")
+                log.info("Switching cooler off.")
                 camera.set_control_value(asi.ASI_COOLER_ON, 0)
 
         await self._run_blocking_or_raise(_set, lock=self._sdk_lock)
+        await self._publish_cooling()
 
-        enabled_status, setpoint_status, power = await self._get_cooling_status()
-        await self.comm.set_state(
-            ICooling, CoolingState(setpoint=setpoint_status, power=int(power), enabled=enabled_status)
-        )
+    async def _get_cooling_hardware(self) -> tuple[bool, float | None, int | None]:
+        enabled, setpoint, power = await self._get_cooling_status()
+        return enabled, setpoint, int(power)
+
+    async def _get_sensor_temperature(self) -> float | None:
+        return await self._get_temperature()
 
 
 __all__ = ["AsiCamera", "AsiCoolCamera"]

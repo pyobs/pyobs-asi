@@ -22,6 +22,8 @@ from pyobs.utils.gui.camera.windowingwidget import WindowingWidget
 from pyobs.utils.parallel import event_wait
 from PySide6 import QtCore, QtWidgets  # type: ignore[import-untyped]
 
+from .coolingramper import SdkCoolingRamper
+
 # the first entry is the default in the GUI
 FORMATS = {
     ImageFormat.INT16: asi.ASI_IMG_RAW16,
@@ -76,6 +78,11 @@ class MainWindow(QtWidgets.QMainWindow):
             camera.set_control_value(asi.ASI_HIGH_SPEED_MODE, 0)
 
         self.cooling: CoolingWidget | None = None
+        # Cooling is ramped in steps, so that warming up does not shock the sensor.
+        self.cooling_ramper = SdkCoolingRamper(camera)
+        self.cooling_target: tuple[bool, float] | None = None
+        self.cooling_wakeup = asyncio.Event()
+        self.cooling_task: asyncio.Task[None] | None = None
         if "CoolerOn" in controls and "TargetTemp" in controls:
             self.cooling = CoolingWidget(
                 (controls["TargetTemp"]["MinValue"], controls["TargetTemp"]["MaxValue"]),
@@ -98,11 +105,30 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @qasync.asyncSlot()  # type: ignore
     async def _cooling_changed(self, enabled: bool, set_point: float) -> None:
-        def _set() -> None:
-            self.camera.set_control_value(asi.ASI_TARGET_TEMP, int(set_point))
-            self.camera.set_control_value(asi.ASI_COOLER_ON, int(enabled))
+        # a new target replaces a running ramp, which continues from the current setpoint
+        self.cooling_target = (enabled, set_point)
+        self.cooling_wakeup.set()
+        if self.cooling_task is None or self.cooling_task.done():
+            self.cooling_task = asyncio.create_task(self._ramp_cooling())
 
-        await asyncio.get_running_loop().run_in_executor(None, _set)
+    async def _ramp_cooling(self) -> None:
+        loop = asyncio.get_running_loop()
+        while self.cooling_target is not None:
+            target = self.cooling_target
+            self.cooling_wakeup.clear()
+            try:
+                delay = await loop.run_in_executor(None, self.cooling_ramper.step, *target)
+            except Exception:
+                traceback.print_exc()
+                delay = 5.0
+            if delay is None:
+                if self.cooling_target is target:
+                    self.cooling_target = None
+                continue
+            try:
+                await asyncio.wait_for(self.cooling_wakeup.wait(), delay)
+            except TimeoutError:
+                pass
 
     @qasync.asyncSlot()  # type: ignore
     async def _update_cooling(self) -> None:
@@ -189,6 +215,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.abort_exposure.set()
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
+        if self.cooling_target is not None:
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "Cooling ramp running",
+                "The cooling setpoint is still being ramped. Closing now leaves the camera at an intermediate "
+                "setpoint with the cooler on. Close anyway?",
+            )
+            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+                event.ignore()
+                return
         self.camera.close()
         super().closeEvent(event)
 

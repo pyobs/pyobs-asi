@@ -48,3 +48,7 @@
 {"gain": 700, "offset": 50, "temp": 25.1, "time": 1794319599.9553728, "mean": 1575.0427366495132, "median": 244.0, "noise_std_adu": 2930.7167148436597, "noise_mad_adu": 1362.8634679233278, "clipped_frac": 0.46644341945648193}
 {"gain": 700, "offset": 100, "temp": 25.1, "time": 1794319601.519274, "mean": 1856.856890797615, "median": 744.0, "noise_std_adu": 3046.7951077189628, "noise_mad_adu": 1668.983569949183, "clipped_frac": 0.4002567529678345}
 {"gain": 700, "offset": 240, "temp": 25.1, "time": 1794319603.0688071, "mean": 2819.8091917037964, "median": 2144.0, "noise_std_adu": 3346.5074345711305, "noise_mad_adu": 2331.544886662678, "clipped_frac": 0.23345839977264404}
+{"gain": 25, "offset": 50, "temp": 27.6, "time": 1794830248.4808383, "mean": 498.9483232498169, "median": 499.0, "noise_std_adu": 5.760731444760568, "noise_mad_adu": 5.241782568935876, "clipped_frac": 0.0}
+{"gain": 75, "offset": 50, "temp": 27.6, "time": 1794830250.0490258, "mean": 497.18326807022095, "median": 497.0, "noise_std_adu": 9.678849318310618, "noise_mad_adu": 8.386852110297403, "clipped_frac": 0.0}
+{"gain": 150, "offset": 50, "temp": 27.7, "time": 1794830251.6324341, "mean": 498.2781550884247, "median": 498.0, "noise_std_adu": 9.55734102413031, "noise_mad_adu": 7.338495596510227, "clipped_frac": 0.0}
+{"gain": 250, "offset": 50, "temp": 27.8, "time": 1794830253.1681156, "mean": 495.53744769096375, "median": 495.0, "noise_std_adu": 28.570894863922888, "noise_mad_adu": 20.967130275743504, "clipped_frac": 1.537799835205078e-05}

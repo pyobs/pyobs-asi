@@ -71,10 +71,13 @@ Bias level and read noise at offset 50 (from the difference of two bias frames, 
 | Gain | Bias [ADU] | Read noise [ADU] | Clipped pixels |
 |---|---|---|---|
 | 0 | 500.3 | 4.46 | 0 |
+| 25 | 498.9 | 5.76 | 0 |
 | 50 | 497.8 | 7.44 | 0 |
+| 75 | 497.2 | 9.68 | 0 |
 | 100 | 500.6 | 5.66 | 0 |
 | 150 | 498.2 | 9.58 | 0 |
 | 200 | 497.0 | 16.33 | 0 |
+| 250 | 495.5 | 28.57 | 0 |
 | 300 | 493.5 | 48.74 | 0.05% |
 | 400 | 488.2 | 134.2 | 0.5% |
 | 500 | 496.9 | 375.9 | 6.7% |
@@ -117,17 +120,18 @@ weights of 1/variance. The bias comes from the intercept of level vs exposure ti
 | Gain | e-/ADU | ADU/e- | Slope error | Read noise [e-] (bias pairs) | Full scale [e-] |
 |---|---|---|---|---|---|
 | 0 | 0.783 | 1.277 | 0.3% | 3.5 | 50885 |
-| 25 | 0.584 | 1.712 | 0.5% | not measured | 37981 |
+| 25 | 0.584 | 1.712 | 0.5% | 3.4 | 37981 |
 | 50 | 0.441 | 2.270 | 0.3% | 3.3 | 28632 |
-| 75 | 0.330 | 3.029 | 0.7% | not measured | 21461 |
+| 75 | 0.330 | 3.029 | 0.7% | 3.2 | 21461 |
 | 100 | 0.255 | 3.914 | 0.5% | 1.4 | 16619 |
-| 150 | 0.142 | 7.026 | 1.2% | not measured | 9258 |
+| 150 | 0.142 | 7.026 | 1.2% | 1.4 | 9258 |
 | 200 | 0.081 | 12.35 | 0.2% | 1.3 | 5263 |
-| 250 | 0.045 | 22.11 | 0.8% | not measured | 2936 |
+| 250 | 0.045 | 22.11 | 0.8% | 1.3 | 2936 |
 | 300 | 0.026 | 39.08 | 0.2% | 1.3 | 1659 |
 
-Gains 25, 75, 150 and 250 were measured in a later run (same set-up, sensor at 28.6 to 29.1 degC, offset 50). Their
-full scale uses the bias from the fit intercept, which is off by up to 136 ADU at gains 150 and 250 (see the short
+Gains 25, 75, 150 and 250 were measured in a later run (same set-up, sensor at 28.6 to 29.1 degC, offset 50; their
+read noise is from bias pairs at the same offset, taken later). The read noise drops from 3.2 e- at gain 75 to 1.4 e- at
+gain 100, so the HCG switch lies between gain 75 and 100 (inferred, gains 76 to 99 not measured). Their full scale uses the bias from the fit intercept, which is off by up to 136 ADU at gains 150 and 250 (see the short
 exposure section), so it is good to about 1%.
 
 ![Photon transfer and linearity](images/ASI2600MM_Pro_flat.png)
@@ -258,6 +262,13 @@ in the cutout run).
   ramp, which compared only the sensor with the setpoint while the sensor still lagged; fixed in
   pyobs/pyobs-core#1077 by also requiring a cooler power of 0. With that fix the close from 0 degC took 450 s: setpoint
   steps of 1 degC every 30 s to 15 degC, the sensor followed within 1 degC, the power fell from 36% to 0%.
+- Full cycle with the released versions (pyobs-core 2.27.1, pyobs-asi 2.3.0 code, defaults): `open()` at 28 degC, set
+  point -5 degC (-20 degC is out of reach at this room temperature, see the cooling limit above), reached after
+  about 17 min at 2 degC/min and held at 54% to 60% power. Frames at -5.2 degC carry `DET-TEMP` -5.2, `DET-COOL` 54 and
+  `GAIN` 100. Closing took 600 s (estimated timeout 780 s): setpoint steps of 1 degC every 30 s from -5 to 15 degC,
+  the sensor followed within about 1 degC, cooler off at 15 degC. A 60 s full-frame dark at -5.2 degC gives 0.0007 e-/s
+  (gain 100), as in the temperature series, and the four corners and the centre differ by at most 0.1 ADU (no amp
+  glow).
 
 ## Short exposures (measured)
 
@@ -316,7 +327,7 @@ the exposure to "done"; the download adds 0.02 to 0.08 s.
 ## Not done
 
 Flat-field uniformity and dust, the dependence of the gain on temperature, the short-exposure offset at other gains
-and temperatures, the read noise at gains 25, 75, 150 and 250, and dark current below -10 degC (not reachable much
+and temperatures, the exact gain of the HCG switch (between 75 and 100), and dark current below -10 degC (not reachable much
 further in this room).
 
 ## GUI (`asi-gui`)

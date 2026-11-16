@@ -23,6 +23,18 @@ class SdkCoolingRamper:
         self.camera = camera
         self.ramp = ramp if ramp is not None else CoolingRamp(resolution=1.0)
 
+    def cooler_is_on(self) -> bool:
+        """Whether the cooler is currently switched on."""
+        return bool(self.camera.get_control_value(asi.ASI_COOLER_ON)[0])
+
+    def warmup_minutes(self) -> float | None:
+        """Estimated minutes until the cooler is off, if switched off now. None if the cooler is off or the
+        warm-up is a single step."""
+        if not self.cooler_is_on() or self.ramp.rate_warm is None:
+            return None
+        current = float(self.camera.get_control_value(asi.ASI_TARGET_TEMP)[0])
+        return max(0.0, self.ramp.off_temperature - current) / self.ramp.rate_warm
+
     def step(self, enabled: bool, set_point: float) -> float | None:
         """Performs one step towards the target.
 
@@ -33,7 +45,7 @@ class SdkCoolingRamper:
         Returns:
             Seconds to wait before the next step, or None if the target was reached.
         """
-        cooler_on = bool(self.camera.get_control_value(asi.ASI_COOLER_ON)[0])
+        cooler_on = self.cooler_is_on()
         temperature = self.camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.0  # SDK unit is 0.1 degC
 
         if cooler_on:

@@ -1,0 +1,435 @@
+{"time": 1794319724.6669972, "label": "warm", "temp": 25.2, "power": 0, "target": null}
+{"time": 1794319754.6672144, "label": "warm", "temp": 25.6, "power": 0, "target": null}
+{"time": 1794319784.6678772, "label": "warm", "temp": 25.8, "power": 0, "target": null}
+{"time": 1794319814.6681645, "label": "warm", "temp": 26.0, "power": 0, "target": null}
+{"time": 1794319844.6688757, "label": "warm", "temp": 26.1, "power": 0, "target": null}
+{"time": 1794319874.6696079, "label": "warm", "temp": 26.3, "power": 0, "target": null}
+{"time": 1794319904.6703155, "label": "warm", "temp": 26.4, "power": 0, "target": null}
+{"time": 1794319934.6709814, "label": "warm", "temp": 26.5, "power": 0, "target": null}
+{"time": 1794319964.671318, "label": "warm", "temp": 26.6, "power": 0, "target": null}
+{"time": 1794319994.6720269, "label": "warm", "temp": 26.7, "power": 0, "target": null}
+{"time": 1794320024.672626, "label": "warm", "temp": 26.8, "power": 0, "target": null}
+{"time": 1794320054.6733425, "label": "warm", "temp": 26.8, "power": 0, "target": null}
+{"time": 1794320084.6736555, "label": "warm", "temp": 27.0, "power": 0, "target": null}
+{"time": 1794320114.6744523, "label": "warm", "temp": 27.0, "power": 0, "target": null}
+{"time": 1794320144.6751785, "label": "warm", "temp": 27.1, "power": 0, "target": null}
+{"time": 1794320174.6755168, "label": "warm", "temp": 27.1, "power": 0, "target": null}
+{"time": 1794320204.6763046, "label": "warm", "temp": 27.1, "power": 0, "target": null}
+{"time": 1794320234.6770258, "label": "warm", "temp": 27.2, "power": 0, "target": null}
+{"time": 1794320264.6773443, "label": "warm", "temp": 27.3, "power": 0, "target": null}
+{"time": 1794320294.6780894, "label": "warm", "temp": 27.3, "power": 0, "target": null}
+{"time": 1794320324.678773, "label": "warm", "temp": 27.3, "power": 0, "target": null}
+{"time": 1794320354.679505, "label": "warm", "temp": 27.4, "power": 0, "target": null}
+{"time": 1794320384.680234, "label": "warm", "temp": 27.5, "power": 0, "target": null}
+{"time": 1794320414.6809545, "label": "warm", "temp": 27.5, "power": 0, "target": null}
+{"time": 1794320444.6816502, "label": "warm", "temp": 27.5, "power": 0, "target": null}
+{"time": 1794320474.6823483, "label": "warm", "temp": 27.5, "power": 0, "target": null}
+{"time": 1794320504.6831136, "label": "warm", "temp": 27.6, "power": 0, "target": null}
+{"time": 1794320534.683897, "label": "warm", "temp": 27.6, "power": 0, "target": null}
+{"time": 1794320564.6846128, "label": "warm", "temp": 27.6, "power": 0, "target": null}
+{"time": 1794320594.685319, "label": "warm", "temp": 27.7, "power": 0, "target": null}
+{"time": 1794320624.6861076, "label": "warm", "temp": 27.7, "power": 0, "target": null}
+{"time": 1794320654.687022, "label": "warm", "temp": 27.8, "power": 0, "target": null}
+{"time": 1794320684.6878443, "label": "warm", "temp": 27.8, "power": 0, "target": null}
+{"time": 1794320714.6885986, "label": "warm", "temp": 27.8, "power": 0, "target": null}
+{"time": 1794320744.689374, "label": "warm", "temp": 27.8, "power": 0, "target": null}
+{"time": 1794320773.5863888, "label": "warm", "temp": 27.9, "power": 0, "target": null}
+{"time": 1794320803.5868435, "label": "warm", "temp": 27.9, "power": 0, "target": null}
+{"time": 1794320833.5874183, "label": "warm", "temp": 28.0, "power": 0, "target": null}
+{"time": 1794320863.5879352, "label": "warm", "temp": 28.0, "power": 0, "target": null}
+{"time": 1794320893.588526, "label": "warm", "temp": 28.0, "power": 0, "target": null}
+{"time": 1794320923.5887928, "label": "warm", "temp": 28.0, "power": 0, "target": null}
+{"time": 1794320953.5895798, "label": "warm", "temp": 28.1, "power": 0, "target": null}
+{"time": 1794320983.5898418, "label": "warm", "temp": 28.1, "power": 0, "target": null}
+{"time": 1794321013.5901885, "label": "warm", "temp": 28.1, "power": 0, "target": null}
+{"time": 1794321043.5904434, "label": "warm", "temp": 28.1, "power": 0, "target": null}
+{"time": 1794321073.5906866, "label": "warm", "temp": 28.2, "power": 0, "target": null}
+{"time": 1794321103.5910306, "label": "warm", "temp": 28.2, "power": 0, "target": null}
+{"time": 1794321133.5914273, "label": "warm", "temp": 28.2, "power": 0, "target": null}
+{"time": 1794321163.5923173, "label": "warm", "temp": 28.3, "power": 0, "target": null}
+{"time": 1794321193.5926473, "label": "warm", "temp": 28.3, "power": 0, "target": null}
+{"time": 1794321223.5928838, "label": "warm", "temp": 28.3, "power": 0, "target": null}
+{"time": 1794321253.593213, "label": "warm", "temp": 28.3, "power": 0, "target": null}
+{"time": 1794321283.5938437, "label": "warm", "temp": 28.3, "power": 0, "target": null}
+{"time": 1794321313.5941205, "label": "warm", "temp": 28.4, "power": 0, "target": null}
+{"time": 1794321343.594828, "label": "warm", "temp": 28.4, "power": 0, "target": null}
+{"time": 1794321373.5955052, "label": "warm", "temp": 28.5, "power": 0, "target": null}
+{"time": 1794321403.5961323, "label": "warm", "temp": 28.5, "power": 0, "target": null}
+{"time": 1794321433.596877, "label": "warm", "temp": 28.5, "power": 0, "target": null}
+{"time": 1794321463.5975785, "label": "warm", "temp": 28.5, "power": 0, "target": null}
+{"time": 1794321493.5982816, "label": "warm", "temp": 28.5, "power": 0, "target": null}
+{"time": 1794321523.5989542, "label": "warm", "temp": 28.5, "power": 0, "target": null}
+{"time": 1794321553.5995781, "label": "warm", "temp": 28.5, "power": 0, "target": null}
+{"time": 1794321583.5999827, "label": "warm", "temp": 28.6, "power": 0, "target": null}
+{"time": 1794321613.6007164, "label": "warm", "temp": 28.6, "power": 0, "target": null}
+{"time": 1794321643.6010447, "label": "warm", "temp": 28.6, "power": 0, "target": null}
+{"time": 1794321673.6017416, "label": "warm", "temp": 28.6, "power": 0, "target": null}
+{"time": 1794321703.6024778, "label": "warm", "temp": 28.6, "power": 0, "target": null}
+{"time": 1794321733.6029186, "label": "warm", "temp": 28.6, "power": 0, "target": null}
+{"time": 1794321763.6035893, "label": "warm", "temp": 28.6, "power": 0, "target": null}
+{"time": 1794321793.6042826, "label": "warm", "temp": 28.6, "power": 0, "target": null}
+{"time": 1794321823.6049895, "label": "warm", "temp": 28.7, "power": 0, "target": null}
+{"time": 1794321853.6054907, "label": "warm", "temp": 28.7, "power": 0, "target": null}
+{"time": 1794321883.6062107, "label": "warm", "temp": 28.7, "power": 0, "target": null}
+{"time": 1794321913.6069086, "label": "warm", "temp": 28.7, "power": 0, "target": null}
+{"time": 1794321943.6076372, "label": "warm", "temp": 28.7, "power": 0, "target": null}
+{"time": 1794321973.6083167, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322003.6090205, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322033.609734, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322063.6104448, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322093.6107352, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322123.611154, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322153.611989, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322183.6126745, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322213.6134071, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322243.6141586, "label": "warm", "temp": 28.8, "power": 0, "target": null}
+{"time": 1794322273.6149433, "label": "warm", "temp": 28.9, "power": 0, "target": null}
+{"time": 1794322303.61561, "label": "warm", "temp": 28.9, "power": 0, "target": null}
+{"time": 1794322333.6161194, "label": "warm", "temp": 28.9, "power": 0, "target": null}
+{"time": 1794322363.616449, "label": "warm", "temp": 28.9, "power": 0, "target": null}
+{"time": 1794322393.6171906, "label": "warm", "temp": 28.9, "power": 0, "target": null}
+{"time": 1794322423.6174893, "label": "warm", "temp": 28.9, "power": 0, "target": null}
+{"time": 1794322453.6179922, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322483.618538, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322513.619128, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322543.6194475, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322573.6198273, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322603.620299, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322633.6211739, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322663.621817, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322693.6223495, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322723.6226563, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322753.6231742, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322783.6234376, "label": "warm", "temp": 29.0, "power": 0, "target": null}
+{"time": 1794322813.623862, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794322843.6243298, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794322873.6249914, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794322903.625949, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794322933.6266072, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794322963.6274211, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794322993.6281013, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794323023.6285188, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794323053.6292903, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794323083.629719, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794323113.6300921, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794323143.6308234, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794323173.6315958, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794323203.6322732, "label": "warm", "temp": 29.1, "power": 0, "target": null}
+{"time": 1794323233.6330223, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323263.633315, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323293.633997, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323323.6344457, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323353.6351495, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323383.6357172, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323413.63638, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323443.6368, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323473.6372495, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323503.6377532, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323533.638233, "label": "warm", "temp": 29.2, "power": 0, "target": null}
+{"time": 1794323563.6389546, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323593.6396055, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323623.640267, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323653.640964, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323683.6417265, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323713.642303, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323743.6428218, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323773.6434443, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323803.6440866, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323833.6445765, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323863.6451313, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323893.6455245, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323923.6459854, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323953.6464856, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794323983.6470976, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324013.6474934, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324043.6478777, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324073.6488204, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324103.6495788, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324133.6500227, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324163.6503463, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324193.6506581, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324223.6510646, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324253.6515622, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324283.6520822, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324313.6524565, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324343.6529162, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324373.6532352, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324403.6539288, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324433.6542213, "label": "warm", "temp": 29.3, "power": 0, "target": null}
+{"time": 1794324463.654909, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324493.6551745, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324523.655599, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324553.656187, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324583.6565259, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324613.6573625, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324643.6581912, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324673.6586637, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324703.659312, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324733.660026, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324763.6605616, "label": "warm", "temp": 29.4, "power": 0, "target": null}
+{"time": 1794324793.661274, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794324823.661721, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794324853.662212, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794324883.6626358, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794324913.6630933, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794324943.6639307, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794324973.664604, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325003.665101, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325033.665511, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325063.6659245, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325093.6663063, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325123.6667511, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325153.6675048, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325183.6679099, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325213.6683428, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325243.6688447, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325273.6694164, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325303.6701035, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325333.6706061, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325363.671159, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325389.6411436, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325419.6413977, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325449.641897, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325479.6425188, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794325509.643181, "label": "warm", "temp": 29.5, "power": 0, "target": null}
+{"time": 1794386115.3325415, "label": "warm", "temp": 21.5, "power": 0, "target": null}
+{"time": 1794386145.3330998, "label": "warm", "temp": 21.8, "power": 0, "target": null}
+{"time": 1794386175.3340955, "label": "warm", "temp": 22.1, "power": 0, "target": null}
+{"time": 1794386205.3348114, "label": "warm", "temp": 22.4, "power": 0, "target": null}
+{"time": 1794386305.7379136, "label": "ramp", "temp": 21.1, "power": 0, "target": 22}
+{"time": 1794386335.7402139, "label": "ramp", "temp": 20.1, "power": 0, "target": 21}
+{"time": 1794386365.7425315, "label": "ramp", "temp": 19.7, "power": 0, "target": 20}
+{"time": 1794386365.742739, "label": "stabilize 20", "temp": 19.7, "power": 0, "target": 20}
+{"time": 1794386395.7429593, "label": "stabilize 20", "temp": 19.3, "power": 0, "target": 20}
+{"time": 1794386425.7435849, "label": "stabilize 20", "temp": 20.6, "power": 0, "target": 20}
+{"time": 1794386455.744287, "label": "stabilize 20", "temp": 20.0, "power": 0, "target": 20}
+{"time": 1794386485.7449756, "label": "stabilize 20", "temp": 19.1, "power": 0, "target": 20}
+{"time": 1794386515.7456157, "label": "stabilize 20", "temp": 20.3, "power": 1, "target": 20}
+{"time": 1794386545.7461553, "label": "stabilize 20", "temp": 20.1, "power": 0, "target": 20}
+{"time": 1794386575.7473302, "label": "stabilize 20", "temp": 19.3, "power": 0, "target": 20}
+{"time": 1794386605.7479246, "label": "stabilize 20", "temp": 20.0, "power": 1, "target": 20}
+{"time": 1794386635.7486308, "label": "stabilize 20", "temp": 20.3, "power": 0, "target": 20}
+{"time": 1794386665.7495048, "label": "stabilize 20", "temp": 19.6, "power": 0, "target": 20}
+{"time": 1794386695.750194, "label": "stabilize 20", "temp": 19.8, "power": 0, "target": 20}
+{"time": 1794386725.7507756, "label": "stabilize 20", "temp": 20.5, "power": 0, "target": 20}
+{"time": 1794386755.7511077, "label": "stabilize 20", "temp": 20.0, "power": 0, "target": 20}
+{"time": 1794386785.7518568, "label": "stabilize 20", "temp": 19.3, "power": 0, "target": 20}
+{"time": 1794386815.7522917, "label": "stabilize 20", "temp": 20.0, "power": 1, "target": 20}
+{"time": 1794386845.753039, "label": "stabilize 20", "temp": 20.3, "power": 0, "target": 20}
+{"time": 1794386875.7533064, "label": "stabilize 20", "temp": 19.7, "power": 0, "target": 20}
+{"time": 1794386905.7540483, "label": "stabilize 20", "temp": 20.3, "power": 0, "target": 20}
+{"time": 1794386935.7546945, "label": "stabilize 20", "temp": 19.8, "power": 0, "target": 20}
+{"time": 1794386965.755506, "label": "stabilize 20", "temp": 19.3, "power": 0, "target": 20}
+{"time": 1794386995.7562354, "label": "stabilize 20", "temp": 19.7, "power": 1, "target": 20}
+{"time": 1794387025.7569463, "label": "stabilize 20", "temp": 20.5, "power": 0, "target": 20}
+{"time": 1794387073.1609685, "label": "ramp", "temp": 20.4, "power": 1, "target": 20}
+{"time": 1794387073.161533, "label": "stabilize 20", "temp": 20.4, "power": 1, "target": 20}
+{"time": 1794387103.162291, "label": "stabilize 20", "temp": 20.3, "power": 0, "target": 20}
+{"time": 1794387133.1631618, "label": "stabilize 20", "temp": 19.6, "power": 0, "target": 20}
+{"time": 1794387163.1640384, "label": "stabilize 20", "temp": 19.3, "power": 0, "target": 20}
+{"time": 1794387193.1646717, "label": "stabilize 20", "temp": 20.3, "power": 1, "target": 20}
+{"time": 1794387307.979264, "label": "ramp", "temp": 18.8, "power": 0, "target": 19}
+{"time": 1794387337.9810698, "label": "ramp", "temp": 17.8, "power": 0, "target": 18}
+{"time": 1794387367.9834864, "label": "ramp", "temp": 17.1, "power": 3, "target": 17}
+{"time": 1794387397.9856803, "label": "ramp", "temp": 15.8, "power": 5, "target": 16}
+{"time": 1794387427.9876626, "label": "ramp", "temp": 14.8, "power": 7, "target": 15}
+{"time": 1794387457.9899058, "label": "ramp", "temp": 13.8, "power": 9, "target": 14}
+{"time": 1794387487.99239, "label": "ramp", "temp": 12.9, "power": 12, "target": 13}
+{"time": 1794387517.994664, "label": "ramp", "temp": 11.9, "power": 14, "target": 12}
+{"time": 1794387547.9968793, "label": "ramp", "temp": 10.9, "power": 17, "target": 11}
+{"time": 1794387577.999223, "label": "ramp", "temp": 10.0, "power": 21, "target": 10}
+{"time": 1794387577.9997962, "label": "stabilize 10", "temp": 10.0, "power": 21, "target": 10}
+{"time": 1794387608.0005493, "label": "stabilize 10", "temp": 9.3, "power": 18, "target": 10}
+{"time": 1794387638.0013614, "label": "stabilize 10", "temp": 9.5, "power": 11, "target": 10}
+{"time": 1794387668.0021932, "label": "stabilize 10", "temp": 10.0, "power": 11, "target": 10}
+{"time": 1794387698.0032904, "label": "stabilize 10", "temp": 10.1, "power": 12, "target": 10}
+{"time": 1794388023.9296708, "label": "ramp", "temp": 10.3, "power": 3, "target": 11}
+{"time": 1794388053.9320085, "label": "ramp", "temp": 12.6, "power": 0, "target": 12}
+{"time": 1794388083.934349, "label": "ramp", "temp": 13.6, "power": 1, "target": 13}
+{"time": 1794388113.9366727, "label": "ramp", "temp": 14.3, "power": 1, "target": 14}
+{"time": 1794388143.9391026, "label": "ramp", "temp": 15.2, "power": 1, "target": 15}
+{"time": 1794388173.9417157, "label": "ramp", "temp": 16.4, "power": 0, "target": 16}
+{"time": 1794388203.9441411, "label": "ramp", "temp": 16.8, "power": 1, "target": 17}
+{"time": 1794388233.9467106, "label": "ramp", "temp": 18.0, "power": 0, "target": 18}
+{"time": 1794388263.9485435, "label": "ramp", "temp": 19.0, "power": 0, "target": 19}
+{"time": 1794388293.950743, "label": "ramp", "temp": 19.8, "power": 0, "target": 20}
+{"time": 1794389595.2735534, "label": "ramp", "temp": 22.6, "power": 0, "target": 23}
+{"time": 1794389625.2758627, "label": "ramp", "temp": 21.5, "power": 0, "target": 22}
+{"time": 1794389655.2781534, "label": "ramp", "temp": 20.2, "power": 0, "target": 21}
+{"time": 1794389685.280359, "label": "ramp", "temp": 19.5, "power": 0, "target": 20}
+{"time": 1794389715.2820837, "label": "ramp", "temp": 18.9, "power": 0, "target": 19}
+{"time": 1794389745.2844179, "label": "ramp", "temp": 17.7, "power": 1, "target": 18}
+{"time": 1794389775.2868762, "label": "ramp", "temp": 16.8, "power": 3, "target": 17}
+{"time": 1794389805.2892282, "label": "ramp", "temp": 15.8, "power": 5, "target": 16}
+{"time": 1794389835.2915971, "label": "ramp", "temp": 15.0, "power": 8, "target": 15}
+{"time": 1794389865.2938814, "label": "ramp", "temp": 14.0, "power": 10, "target": 14}
+{"time": 1794389895.2961366, "label": "ramp", "temp": 13.0, "power": 14, "target": 13}
+{"time": 1794389925.2985017, "label": "ramp", "temp": 11.8, "power": 17, "target": 12}
+{"time": 1794389955.3009396, "label": "ramp", "temp": 10.9, "power": 19, "target": 11}
+{"time": 1794389985.303204, "label": "ramp", "temp": 9.9, "power": 22, "target": 10}
+{"time": 1794389985.3036869, "label": "stabilize 10", "temp": 9.9, "power": 22, "target": 10}
+{"time": 1794390015.3043916, "label": "stabilize 10", "temp": 9.3, "power": 19, "target": 10}
+{"time": 1794390045.3052745, "label": "stabilize 10", "temp": 9.6, "power": 13, "target": 10}
+{"time": 1794390075.3061845, "label": "stabilize 10", "temp": 9.9, "power": 13, "target": 10}
+{"time": 1794390105.307113, "label": "stabilize 10", "temp": 10.0, "power": 13, "target": 10}
+{"time": 1794394028.1447093, "label": "ramp", "temp": 10.3, "power": 4, "target": 11}
+{"time": 1794394058.147274, "label": "ramp", "temp": 12.2, "power": 0, "target": 12}
+{"time": 1794394088.1497111, "label": "ramp", "temp": 13.3, "power": 3, "target": 13}
+{"time": 1794394118.1520424, "label": "ramp", "temp": 14.4, "power": 1, "target": 14}
+{"time": 1794394148.154742, "label": "ramp", "temp": 15.3, "power": 1, "target": 15}
+{"time": 1794394178.157042, "label": "ramp", "temp": 16.5, "power": 1, "target": 16}
+{"time": 1794394208.1594434, "label": "ramp", "temp": 17.3, "power": 0, "target": 17}
+{"time": 1794394238.161832, "label": "ramp", "temp": 18.1, "power": 1, "target": 18}
+{"time": 1794394268.1641996, "label": "ramp", "temp": 18.6, "power": 0, "target": 19}
+{"time": 1794394298.1668613, "label": "ramp", "temp": 19.6, "power": 0, "target": 20}
+{"time": 1794394328.1695406, "label": "ramp", "temp": 20.3, "power": 0, "target": 21}
+{"time": 1794394358.171797, "label": "ramp", "temp": 20.9, "power": 0, "target": 22}
+{"time": 1794394388.173945, "label": "ramp", "temp": 21.3, "power": 0, "target": 23}
+{"time": 1794394418.1763756, "label": "ramp", "temp": 21.6, "power": 0, "target": 24}
+{"time": 1794398776.4424865, "label": "ramp", "temp": 26.6, "power": 0, "target": 27}
+{"time": 1794398806.4442158, "label": "ramp", "temp": 25.7, "power": 0, "target": 26}
+{"time": 1794398836.4465845, "label": "ramp", "temp": 24.4, "power": 1, "target": 25}
+{"time": 1794398866.4489658, "label": "ramp", "temp": 24.3, "power": 0, "target": 24}
+{"time": 1794398896.4509714, "label": "ramp", "temp": 23.1, "power": 2, "target": 23}
+{"time": 1794398926.4531553, "label": "ramp", "temp": 21.6, "power": 4, "target": 22}
+{"time": 1794398956.4554791, "label": "ramp", "temp": 20.6, "power": 5, "target": 21}
+{"time": 1794398986.4577932, "label": "ramp", "temp": 19.6, "power": 7, "target": 20}
+{"time": 1794398986.458348, "label": "stabilize 20", "temp": 19.6, "power": 7, "target": 20}
+{"time": 1794399016.459161, "label": "stabilize 20", "temp": 19.2, "power": 1, "target": 20}
+{"time": 1794399046.4600651, "label": "stabilize 20", "temp": 20.7, "power": 1, "target": 20}
+{"time": 1794399076.4610198, "label": "stabilize 20", "temp": 19.8, "power": 2, "target": 20}
+{"time": 1794399106.461962, "label": "stabilize 20", "temp": 20.1, "power": 0, "target": 20}
+{"time": 1794399136.4627824, "label": "stabilize 20", "temp": 20.1, "power": 3, "target": 20}
+{"time": 1794399166.463201, "label": "stabilize 20", "temp": 19.4, "power": 1, "target": 20}
+{"time": 1794399196.4635627, "label": "stabilize 20", "temp": 20.3, "power": 3, "target": 20}
+{"time": 1794399296.2986722, "label": "ramp", "temp": 19.0, "power": 1, "target": 19}
+{"time": 1794399326.3010454, "label": "ramp", "temp": 17.7, "power": 3, "target": 18}
+{"time": 1794399356.3034084, "label": "ramp", "temp": 16.7, "power": 4, "target": 17}
+{"time": 1794399386.305752, "label": "ramp", "temp": 15.8, "power": 5, "target": 16}
+{"time": 1794399416.3078694, "label": "ramp", "temp": 14.9, "power": 8, "target": 15}
+{"time": 1794399416.308538, "label": "stabilize 15", "temp": 14.9, "power": 8, "target": 15}
+{"time": 1794399446.309408, "label": "stabilize 15", "temp": 14.3, "power": 6, "target": 15}
+{"time": 1794399476.310164, "label": "stabilize 15", "temp": 14.6, "power": 0, "target": 15}
+{"time": 1794399506.310555, "label": "stabilize 15", "temp": 15.1, "power": 3, "target": 15}
+{"time": 1794399536.3116484, "label": "stabilize 15", "temp": 14.8, "power": 2, "target": 15}
+{"time": 1794399579.3875628, "label": "stabilize 15", "temp": 15.2, "power": 0, "target": 15}
+{"time": 1794399584.3880515, "label": "stabilize 15", "temp": 15.6, "power": 0, "target": 15}
+{"time": 1794399589.388579, "label": "stabilize 15", "temp": 16.1, "power": 0, "target": 15}
+{"time": 1794399594.3978693, "label": "stabilize 15", "temp": 16.0, "power": 1, "target": 15}
+{"time": 1794399599.3987353, "label": "stabilize 15", "temp": 15.8, "power": 3, "target": 15}
+{"time": 1794399604.399576, "label": "stabilize 15", "temp": 15.6, "power": 3, "target": 15}
+{"time": 1794399609.4001925, "label": "stabilize 15", "temp": 15.5, "power": 4, "target": 15}
+{"time": 1794399614.4006171, "label": "stabilize 15", "temp": 15.2, "power": 4, "target": 15}
+{"time": 1794399619.4014988, "label": "stabilize 15", "temp": 15.1, "power": 4, "target": 15}
+{"time": 1794399624.402378, "label": "stabilize 15", "temp": 15.0, "power": 4, "target": 15}
+{"time": 1794400740.1633735, "label": "ramp", "temp": 13.9, "power": 4, "target": 14}
+{"time": 1794400770.1657646, "label": "ramp", "temp": 13.1, "power": 8, "target": 13}
+{"time": 1794400800.1677332, "label": "ramp", "temp": 12.0, "power": 11, "target": 12}
+{"time": 1794400830.169931, "label": "ramp", "temp": 11.1, "power": 14, "target": 11}
+{"time": 1794400860.1718705, "label": "ramp", "temp": 10.0, "power": 17, "target": 10}
+{"time": 1794400860.1722884, "label": "stabilize 10", "temp": 10.0, "power": 17, "target": 10}
+{"time": 1794400865.173002, "label": "stabilize 10", "temp": 9.8, "power": 17, "target": 10}
+{"time": 1794400870.1743102, "label": "stabilize 10", "temp": 9.7, "power": 17, "target": 10}
+{"time": 1794400875.1751816, "label": "stabilize 10", "temp": 9.6, "power": 17, "target": 10}
+{"time": 1794400880.17611, "label": "stabilize 10", "temp": 9.4, "power": 17, "target": 10}
+{"time": 1794400885.177054, "label": "stabilize 10", "temp": 9.3, "power": 16, "target": 10}
+{"time": 1794400890.1775723, "label": "stabilize 10", "temp": 9.3, "power": 14, "target": 10}
+{"time": 1794402005.8854737, "label": "ramp", "temp": 9.6, "power": 14, "target": 9}
+{"time": 1794402035.8879669, "label": "ramp", "temp": 8.7, "power": 21, "target": 8}
+{"time": 1794402065.8895984, "label": "ramp", "temp": 7.5, "power": 25, "target": 7}
+{"time": 1794402095.8917618, "label": "ramp", "temp": 6.2, "power": 29, "target": 6}
+{"time": 1794402125.8933623, "label": "ramp", "temp": 5.0, "power": 31, "target": 5}
+{"time": 1794402125.893668, "label": "stabilize 5", "temp": 5.0, "power": 31, "target": 5}
+{"time": 1794402130.894007, "label": "stabilize 5", "temp": 4.9, "power": 31, "target": 5}
+{"time": 1794402135.8943052, "label": "stabilize 5", "temp": 4.8, "power": 30, "target": 5}
+{"time": 1794402140.8948407, "label": "stabilize 5", "temp": 4.6, "power": 30, "target": 5}
+{"time": 1794402145.8956337, "label": "stabilize 5", "temp": 4.5, "power": 30, "target": 5}
+{"time": 1794402150.896585, "label": "stabilize 5", "temp": 4.4, "power": 29, "target": 5}
+{"time": 1794402155.896896, "label": "stabilize 5", "temp": 4.3, "power": 29, "target": 5}
+{"time": 1794403271.5433218, "label": "ramp", "temp": 4.6, "power": 29, "target": 4}
+{"time": 1794403301.5450351, "label": "ramp", "temp": 3.7, "power": 33, "target": 3}
+{"time": 1794403331.547431, "label": "ramp", "temp": 2.5, "power": 38, "target": 2}
+{"time": 1794403361.549265, "label": "ramp", "temp": 1.3, "power": 41, "target": 1}
+{"time": 1794403391.5515149, "label": "ramp", "temp": 0.1, "power": 44, "target": 0}
+{"time": 1794403391.5520005, "label": "stabilize 0", "temp": 0.1, "power": 44, "target": 0}
+{"time": 1794403396.5526652, "label": "stabilize 0", "temp": 0.0, "power": 44, "target": 0}
+{"time": 1794403401.5535078, "label": "stabilize 0", "temp": -0.1, "power": 44, "target": 0}
+{"time": 1794403406.5543952, "label": "stabilize 0", "temp": -0.3, "power": 44, "target": 0}
+{"time": 1794403411.5553887, "label": "stabilize 0", "temp": -0.4, "power": 44, "target": 0}
+{"time": 1794403416.555975, "label": "stabilize 0", "temp": -0.5, "power": 43, "target": 0}
+{"time": 1794403421.5568428, "label": "stabilize 0", "temp": -0.5, "power": 42, "target": 0}
+{"time": 1794404537.268695, "label": "ramp", "temp": -0.3, "power": 41, "target": -1}
+{"time": 1794404567.270557, "label": "ramp", "temp": -1.0, "power": 46, "target": -2}
+{"time": 1794404597.272436, "label": "ramp", "temp": -2.0, "power": 50, "target": -3}
+{"time": 1794404627.274493, "label": "ramp", "temp": -3.1, "power": 55, "target": -4}
+{"time": 1794404657.2763429, "label": "ramp", "temp": -4.3, "power": 58, "target": -5}
+{"time": 1794404657.2766173, "label": "stabilize -5", "temp": -4.3, "power": 58, "target": -5}
+{"time": 1794404662.2770078, "label": "stabilize -5", "temp": -4.5, "power": 60, "target": -5}
+{"time": 1794404667.2779408, "label": "stabilize -5", "temp": -4.8, "power": 60, "target": -5}
+{"time": 1794404672.2783034, "label": "stabilize -5", "temp": -5.0, "power": 60, "target": -5}
+{"time": 1794404677.2786264, "label": "stabilize -5", "temp": -5.1, "power": 59, "target": -5}
+{"time": 1794404682.2793424, "label": "stabilize -5", "temp": -5.2, "power": 59, "target": -5}
+{"time": 1794404687.2796938, "label": "stabilize -5", "temp": -5.3, "power": 59, "target": -5}
+{"time": 1794405802.9193623, "label": "ramp", "temp": -5.2, "power": 57, "target": -6}
+{"time": 1794405832.921208, "label": "ramp", "temp": -6.0, "power": 61, "target": -7}
+{"time": 1794405862.9234831, "label": "ramp", "temp": -6.9, "power": 65, "target": -8}
+{"time": 1794405892.9258244, "label": "ramp", "temp": -7.8, "power": 67, "target": -9}
+{"time": 1794405922.9279923, "label": "ramp", "temp": -8.6, "power": 69, "target": -10}
+{"time": 1794405922.9283507, "label": "stabilize -10", "temp": -8.6, "power": 69, "target": -10}
+{"time": 1794405927.9289305, "label": "stabilize -10", "temp": -8.7, "power": 70, "target": -10}
+{"time": 1794405932.9295235, "label": "stabilize -10", "temp": -8.8, "power": 70, "target": -10}
+{"time": 1794405937.9300861, "label": "stabilize -10", "temp": -9.0, "power": 71, "target": -10}
+{"time": 1794405942.930872, "label": "stabilize -10", "temp": -9.1, "power": 71, "target": -10}
+{"time": 1794405947.931436, "label": "stabilize -10", "temp": -9.3, "power": 72, "target": -10}
+{"time": 1794405952.931992, "label": "stabilize -10", "temp": -9.4, "power": 73, "target": -10}
+{"time": 1794405957.932779, "label": "stabilize -10", "temp": -9.6, "power": 74, "target": -10}
+{"time": 1794405962.9334056, "label": "stabilize -10", "temp": -9.7, "power": 74, "target": -10}
+{"time": 1794405967.9342666, "label": "stabilize -10", "temp": -9.8, "power": 74, "target": -10}
+{"time": 1794405972.9350953, "label": "stabilize -10", "temp": -10.0, "power": 73, "target": -10}
+{"time": 1794407088.629589, "label": "ramp", "temp": -10.3, "power": 74, "target": -11}
+{"time": 1794407118.6317563, "label": "ramp", "temp": -10.8, "power": 78, "target": -12}
+{"time": 1794407148.6339445, "label": "ramp", "temp": -11.6, "power": 81, "target": -13}
+{"time": 1794407178.6355896, "label": "ramp", "temp": -12.1, "power": 83, "target": -14}
+{"time": 1794407208.6377206, "label": "ramp", "temp": -12.8, "power": 87, "target": -15}
+{"time": 1794407208.63792, "label": "stabilize -15", "temp": -12.8, "power": 87, "target": -15}
+{"time": 1794407213.6381874, "label": "stabilize -15", "temp": -13.0, "power": 88, "target": -15}
+{"time": 1794407218.6385596, "label": "stabilize -15", "temp": -13.1, "power": 88, "target": -15}
+{"time": 1794407223.6392183, "label": "stabilize -15", "temp": -13.3, "power": 89, "target": -15}
+{"time": 1794407228.63963, "label": "stabilize -15", "temp": -13.4, "power": 89, "target": -15}
+{"time": 1794407233.6404347, "label": "stabilize -15", "temp": -13.5, "power": 90, "target": -15}
+{"time": 1794407238.641314, "label": "stabilize -15", "temp": -13.6, "power": 90, "target": -15}
+{"time": 1794407243.6422393, "label": "stabilize -15", "temp": -13.8, "power": 91, "target": -15}
+{"time": 1794407248.643141, "label": "stabilize -15", "temp": -14.0, "power": 92, "target": -15}
+{"time": 1794407253.6439323, "label": "stabilize -15", "temp": -14.0, "power": 92, "target": -15}
+{"time": 1794407258.644511, "label": "stabilize -15", "temp": -14.1, "power": 92, "target": -15}
+{"time": 1794407263.64532, "label": "stabilize -15", "temp": -14.3, "power": 94, "target": -15}
+{"time": 1794407268.6461918, "label": "stabilize -15", "temp": -14.5, "power": 94, "target": -15}
+{"time": 1794407273.6470454, "label": "stabilize -15", "temp": -14.5, "power": 95, "target": -15}
+{"time": 1794407278.647896, "label": "stabilize -15", "temp": -14.6, "power": 95, "target": -15}
+{"time": 1794407283.6486447, "label": "stabilize -15", "temp": -14.8, "power": 95, "target": -15}
+{"time": 1794407288.6489236, "label": "stabilize -15", "temp": -14.9, "power": 95, "target": -15}
+{"time": 1794407495.0626142, "label": "ramp", "temp": 3.0, "power": 7, "target": -2}
+{"time": 1794407525.064984, "label": "ramp", "temp": 6.0, "power": 14, "target": -1}
+{"time": 1794407555.0668778, "label": "ramp", "temp": 7.1, "power": 19, "target": 0}
+{"time": 1794407585.0691657, "label": "ramp", "temp": 7.3, "power": 26, "target": 1}
+{"time": 1794407615.0714743, "label": "ramp", "temp": 6.8, "power": 32, "target": 2}
+{"time": 1794407645.0735471, "label": "ramp", "temp": 5.7, "power": 37, "target": 3}
+{"time": 1794407675.0752127, "label": "ramp", "temp": 4.4, "power": 42, "target": 4}
+{"time": 1794407705.0768063, "label": "ramp", "temp": 3.7, "power": 37, "target": 5}
+{"time": 1794407735.0784028, "label": "ramp", "temp": 3.9, "power": 33, "target": 6}
+{"time": 1794407765.0805445, "label": "ramp", "temp": 4.6, "power": 28, "target": 7}
+{"time": 1794407795.0821652, "label": "ramp", "temp": 5.6, "power": 22, "target": 8}
+{"time": 1794407825.0837991, "label": "ramp", "temp": 6.9, "power": 16, "target": 9}
+{"time": 1794407855.0854676, "label": "ramp", "temp": 8.4, "power": 10, "target": 10}
+{"time": 1794407885.087206, "label": "ramp", "temp": 10.0, "power": 4, "target": 11}
+{"time": 1794407915.0896337, "label": "ramp", "temp": 12.0, "power": 0, "target": 12}
+{"time": 1794407945.0922668, "label": "ramp", "temp": 14.0, "power": 3, "target": 13}
+{"time": 1794407975.0945704, "label": "ramp", "temp": 13.9, "power": 2, "target": 14}
+{"time": 1794408005.0963082, "label": "ramp", "temp": 15.6, "power": 1, "target": 15}
+{"time": 1794408035.098529, "label": "ramp", "temp": 16.7, "power": 1, "target": 16}
+{"time": 1794408065.1003242, "label": "ramp", "temp": 17.8, "power": 0, "target": 17}
+{"time": 1794408095.102623, "label": "ramp", "temp": 18.6, "power": 0, "target": 18}
+{"time": 1794408125.1044004, "label": "ramp", "temp": 19.2, "power": 1, "target": 19}
+{"time": 1794408155.1066813, "label": "ramp", "temp": 19.6, "power": 0, "target": 20}
+{"time": 1794408185.1085463, "label": "ramp", "temp": 20.6, "power": 0, "target": 21}
+{"time": 1794408215.110291, "label": "ramp", "temp": 21.7, "power": 0, "target": 22}

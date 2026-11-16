@@ -68,9 +68,14 @@ setpoint in degrees Celsius:
     camera: ZWO ASI071MC Pro
     setpoint: -20
 
-The setpoint is changed in steps (default 2 degC/min when cooling down, 1 degC/min when warming up, and the
-cooler is switched off only after warming up). Use `cooling_rate_cool`, `cooling_rate_warm` and `cooling_ramp_step`
-to change this, see *CoolingRampMixin* in *pyobs-core*.
+The setpoint is changed in steps (default 2 degC/min when cooling down and 2 degC/min when warming up, and the
+cooler is switched off only after warming up to `cooling_off_temperature`, default 15 degC). Use `cooling_rate_cool`,
+`cooling_rate_warm`, `cooling_off_temperature` and `cooling_ramp_step` to change this, see *CoolingRampMixin* in *pyobs-core*.
+
+Closing the camera switches the cooler off at once, so the module warms the sensor up first when it is closed
+(`cooling_warmup_on_close`, default true). Warming up from -20 degC takes about 17 minutes at the default rate. By
+default the module waits for the time that the warm-up needs from the current setpoint, plus 20% and a minute. Set
+`cooling_close_timeout` (in seconds) to limit the wait, after which the camera is closed anyway.
 
 
 GUI

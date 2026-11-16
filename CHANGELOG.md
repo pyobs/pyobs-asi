@@ -9,6 +9,9 @@ Entries for releases before this file existed were generated from commit subject
 
 ## [Unreleased]
 
+- Closing the camera switches the ASI cooler off at once, which warms the sensor abruptly. `AsiCoolCamera` now warms
+  up first when it is closed (`cooling_warmup_on_close`, default true; `cooling_close_timeout`, default 300 s, after
+  which the camera is closed anyway). The GUI asks "Warm up first, close now or cancel" when closed with the cooler on.
 - `AsiCoolCamera` ramps the cooling setpoint with pyobs-core's `CoolingRampMixin` (needs pyobs-core 2.24.0).
   `set_cooling` returns at once and the setpoint is stepped in the background, including warming up before the
   cooler is switched off. Rates and step are set with `cooling_rate_warm` (default 1 degC/min),

@@ -52,6 +52,15 @@ FORMATS = {
 # sensor resolution/image format.
 _READOUT_TIMEOUT = 30.0
 
+# the SDK reports a temperature of exactly 0.0 until its first temperature update arrives after open(), so the module
+# waits this long for a non-zero value. After that 0.0 is accepted, because the sensor can really be at 0 degC.
+_TEMPERATURE_READY_TIMEOUT = 5.0
+_TEMPERATURE_READY_POLL = 0.1
+
+# warm-up on close: the estimated time gets this factor and this many seconds on top
+_CLOSE_MARGIN_FACTOR = 1.2
+_CLOSE_MARGIN_SECONDS = 60.0
+
 # the exposure-wait loop's own timeout needs to cover the actual exposure time plus some margin
 # for overhead -- exposure_time alone would be too tight.
 _EXPOSURE_WAIT_MARGIN = 30.0
@@ -153,6 +162,8 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
             self._default_gain = self._gain = float(controls["Gain"]["DefaultValue"])
             self._default_offset = self._gain_offset = float(controls["Offset"]["DefaultValue"])
 
+        await self._wait_for_temperature()
+
         log.info("Camera info:")
         for key, val in self._camera_info.items():
             log.info("  - %s: %s", key, val)
@@ -183,6 +194,16 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
         await self.comm.set_state(IBinning, BinningState(x=self._binning, y=self._binning))
         await self._publish_gain()
         await self.comm.set_state(IImageFormat, ImageFormatState(image_format=self._image_format))
+
+    async def _wait_for_temperature(self) -> None:
+        """Wait until the SDK reports a temperature, it is 0.0 right after open() until the first update.
+
+        Anything that reads the sensor temperature early, like a cooling ramp that starts at it, would otherwise
+        start from 0 degC. If the temperature is still 0.0 after the timeout, it is taken as it is.
+        """
+        deadline = time.monotonic() + _TEMPERATURE_READY_TIMEOUT
+        while await self._get_temperature() == 0.0 and time.monotonic() < deadline:
+            await asyncio.sleep(_TEMPERATURE_READY_POLL)
 
     def _mode_options(self) -> dict[str, list[str]]:
         """Mode groups and their modes, empty for cameras without a preset."""
@@ -379,6 +400,7 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
         image.header["DATAMEAN"] = (float(np.mean(data)), "Mean data value")
 
         image.header["DET-PIXL"] = (self._camera_info["PixelSize"] / 1000.0, "Size of detector pixels (square) [mm]")
+        image.header["GAIN"] = (self._gain, "Gain used for exposure")
         e_per_adu = detector_gain(self._preset, self._camera_info, self._gain)
         if e_per_adu is not None:
             image.header["DET-GAIN"] = (e_per_adu, "Detector gain [e-/ADU]")
@@ -476,13 +498,40 @@ class AsiCoolCamera(CoolingRampMixin, AsiCamera, ICooling):
     # ASI_TARGET_TEMP is an integer
     _cooling_setpoint_resolution = 1.0
 
-    def __init__(self, setpoint: int = -20, **kwargs: Any):
+    def __init__(
+        self,
+        setpoint: int = -20,
+        cooling_warmup_on_close: bool = True,
+        cooling_close_timeout: float | None = None,
+        cooling_off_temperature: float = 15.0,
+        cooling_rate_warm: float | None = 2.0,
+        **kwargs: Any,
+    ):
         """Initializes a new AsiCoolCamera.
+
+        Closing the camera handle switches the cooler off at once, so unlike the generic mixin, this module warms
+        the sensor up on close by default.
 
         Args:
             setpoint: Cooling temperature setpoint that full_reset() cools to.
+            cooling_warmup_on_close: Warm up and switch the cooler off before closing the camera.
+            cooling_close_timeout: Maximum time in seconds that warm-up on close may take. When it runs out, the
+                camera is closed anyway and the cooler switches off abruptly. None (default): the time needed from
+                the current setpoint at cooling_rate_warm, plus a margin (from -20 degC about 17.5 min at the
+                default rate).
+            cooling_off_temperature: Temperature in degC that the setpoint is ramped to before the cooler is switched
+                off. The sensor then warms up to ambient on its own, so this should not be far below it.
+            cooling_rate_warm: Maximum rate in degC/min when raising the setpoint or switching the cooler off.
         """
-        CoolingRampMixin.__init__(self, **kwargs)
+        CoolingRampMixin.__init__(
+            self,
+            cooling_warmup_on_close=cooling_warmup_on_close,
+            cooling_close_timeout=300.0 if cooling_close_timeout is None else cooling_close_timeout,
+            cooling_off_temperature=cooling_off_temperature,
+            cooling_rate_warm=cooling_rate_warm,
+            **kwargs,
+        )
+        self._auto_close_timeout = cooling_close_timeout is None
         self._temp_setpoint = setpoint
 
     async def open(self) -> None:
@@ -491,6 +540,25 @@ class AsiCoolCamera(CoolingRampMixin, AsiCamera, ICooling):
 
         if not self._camera_info["IsCoolerCam"]:
             raise ValueError("Camera has no support for cooling.")
+
+    async def close(self) -> None:
+        """Close module, after warming up the sensor."""
+        if self._cooling_warmup_on_close and self._auto_close_timeout:
+            self._cooling_close_timeout = await self._estimated_close_timeout()
+        await super().close()
+
+    async def _estimated_close_timeout(self) -> float:
+        """Time in seconds that warming up from the current setpoint takes, plus a margin."""
+        rate = self._cooling_ramp.rate_warm
+        try:
+            enabled, setpoint, _ = await self._get_cooling_status()
+        except Exception:
+            log.warning("Could not read the cooler, using a close timeout of %.0fs.", self._cooling_close_timeout)
+            return self._cooling_close_timeout
+        if not enabled or rate is None:
+            return self._cooling_close_timeout
+        minutes = max(0.0, self._cooling_ramp.off_temperature - setpoint) / rate
+        return minutes * 60.0 * _CLOSE_MARGIN_FACTOR + _CLOSE_MARGIN_SECONDS
 
     async def full_reset(self, **kwargs: Any) -> None:
         """Reset the device completely, including cooling."""

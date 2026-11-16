@@ -6,6 +6,8 @@ Run with the lens capped and without any other program using the camera, e.g.::
     uv run python tools/characterize.py gain
     uv run python tools/characterize.py temperature
     uv run python tools/characterize.py flat   # lens uncapped, pointed at a steady, defocused light source
+    uv run python tools/characterize.py short  # same light source
+    uv run python tools/characterize.py readout
     uv run python tools/characterize.py report
 
 Steps (all with high speed mode off, on a central 2048x2048 window):
@@ -17,6 +19,10 @@ Steps (all with high speed mode off, on a central 2048x2048 window):
   of at most 2 degC/min and the camera is warmed up again afterwards.
 * ``flat``: photon transfer curve from pairs of frames of a steady, roughly uniform light source (e.g. a wall): gain in
   e-/ADU, read noise in e-, saturation and linearity. The bias level comes from the fit of level vs. exposure time.
+* ``short``: signal vs. exposure times from the minimum up to 100 ms with a steady light source, to find an offset in
+  the exposure time or a nonlinearity for short exposures.
+* ``readout``: time per frame for the full frame vs. binning and bit depth, with high speed mode off and on, and the
+  read noise in both modes.
 * ``report``: plots and a Markdown report from the measured data.
 
 Results are appended to JSON lines files in the output folder, so a run can be repeated or resumed.
@@ -61,6 +67,11 @@ FLAT_MAX_EXPOSURE_S = 20.0
 LINEAR_MAX_FRACTION = 0.6  # bias and rate are fitted below this level
 FIT_MAX_FRACTION = 0.75  # the photon transfer fit uses signals below this fraction of full scale
 DEFAULT_OFFSET = 50
+SHORT_EXPOSURES_S = [0.0, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1]
+SHORT_REFERENCE_S = 0.01  # repeated between the points to follow the light source
+SHORT_FRAMES = 5
+SHORT_FIT_MIN_S = 0.001  # the exposure offset is fitted from exposures from here on
+READOUT_FRAMES = 5
 
 
 class CoolerLimit(Exception):
@@ -399,6 +410,107 @@ def run_temperature(cam: Camera, out: Output, temperatures: list[int], gain: int
         warm_up(cam, out, ambient)
 
 
+def run_short(cam: Camera, out: Output, gain: int, offset: int, reference_s: float = SHORT_REFERENCE_S) -> None:
+    """Mean level of the central window vs. exposure time for short exposures, with a reference exposure between."""
+    min_s = cam.min_exposure_us * 1e-6
+    # bias level from frames at the minimum exposure, the signal level is relative to that
+    cam.grab(min_s, gain, offset)
+    bias = float(np.mean([crop(cam.grab(min_s, gain, offset)).mean() for _ in range(SHORT_FRAMES)]))
+    cam.grab(reference_s, gain, offset)
+    ref0 = float(crop(cam.grab(reference_s, gain, offset)).mean())
+    if ref0 - bias <= 20:
+        raise SystemExit("Too little light on the sensor, check the lens cap and the light source.")
+    rate = (ref0 - bias) / reference_s
+    for exposure in SHORT_EXPOSURES_S:
+        exposure = max(exposure, min_s)
+        if bias + rate * exposure > 0.85 * FULL_SCALE:
+            print(f"  t={exposure:.6f}s skipped, would saturate", flush=True)
+            continue
+        cam.grab(exposure, gain, offset)  # discard the first frame after a setting change
+        levels = [float(crop(cam.grab(exposure, gain, offset)).mean()) for _ in range(SHORT_FRAMES)]
+        cam.grab(reference_s, gain, offset)
+        ref = float(crop(cam.grab(reference_s, gain, offset)).mean())
+        record = {
+            "gain": gain,
+            "offset": offset,
+            "exposure": exposure,
+            "time": time.time(),
+            "temp": cam.temperature(),
+            "level": float(np.mean(levels)),
+            "level_std": float(np.std(levels)),
+            "level_min_exposure": bias,
+            "ref_level": ref,
+        }
+        out.write("short", record)
+        print(
+            f"  t={exposure:9.6f}s level={record['level']:9.2f} +- {record['level_std']:.2f} ADU "
+            f"reference={ref - bias:8.1f} ADU",
+            flush=True,
+        )
+
+
+def _timed_frames(cam: Camera, width: int, height: int, bins: int, image_type: int, gain: int, offset: int) -> list:
+    c = cam.cam
+    c.set_control_value(asi.ASI_GAIN, gain)
+    c.set_control_value(asi.ASI_OFFSET, offset)
+    c.set_control_value(asi.ASI_EXPOSURE, cam.min_exposure_us)
+    c.set_roi(0, 0, width, height, bins=bins, image_type=image_type)
+    frames = []
+    for i in range(READOUT_FRAMES + 1):  # the first frame after a setting change is discarded
+        t0 = time.time()
+        c.start_exposure()
+        while c.get_exposure_status() == asi.ASI_EXP_WORKING:
+            time.sleep(0.001)
+        t1 = time.time()
+        if c.get_exposure_status() != asi.ASI_EXP_SUCCESS:
+            raise RuntimeError("Exposure failed.")
+        data = c.get_data_after_exposure()
+        t2 = time.time()
+        if i > 0:
+            frames.append((t1 - t0, t2 - t1, data))
+    return frames
+
+
+def run_readout(cam: Camera, out: Output, gain: int, offset: int) -> None:
+    """Time per frame of the full frame vs. binning and bit depth, and the read noise, in both speed modes."""
+    info = cam.info
+    modes = [("RAW16", asi.ASI_IMG_RAW16, np.uint16), ("RAW8", asi.ASI_IMG_RAW8, np.uint8)]
+    for speed in (0, 1):
+        cam.cam.set_control_value(asi.ASI_HIGH_SPEED_MODE, speed)
+        for bins in info["SupportedBins"]:
+            width = info["MaxWidth"] // bins // 8 * 8
+            height = info["MaxHeight"] // bins // 2 * 2
+            for name, image_type, dtype in modes:
+                frames = _timed_frames(cam, width, height, bins, image_type, gain, offset)
+                exposure_s = float(np.median([f[0] for f in frames]))
+                download_s = float(np.median([f[1] for f in frames]))
+                a = np.frombuffer(frames[0][2], dtype=dtype).reshape(height, width)
+                b = np.frombuffer(frames[1][2], dtype=dtype).reshape(height, width)
+                noise = pair_stats(crop(a), crop(b)) if min(a.shape) >= CUTOUT else None
+                record = {
+                    "time": time.time(),
+                    "high_speed": speed,
+                    "bins": bins,
+                    "type": name,
+                    "width": width,
+                    "height": height,
+                    "gain": gain,
+                    "offset": offset,
+                    "exposure_s": exposure_s,
+                    "download_s": download_s,
+                    "frame_s": exposure_s + download_s,
+                    "noise_adu": None if noise is None else noise["noise_std_adu"],
+                    "bias_mean": None if noise is None else noise["mean"],
+                }
+                out.write("readout", record)
+                print(
+                    f"  high_speed={speed} bin={bins} {name} {width}x{height}: exposure+readout {exposure_s:.3f} s, "
+                    f"download {download_s:.3f} s, noise={record['noise_adu']}",
+                    flush=True,
+                )
+    cam.cam.set_control_value(asi.ASI_HIGH_SPEED_MODE, 0)
+
+
 def fit_gain(records: list[dict[str, Any]], gain: int, weighted: bool = False) -> dict[str, float] | None:
     """Fit variance = read_noise^2 + g * signal. The slope g is ADU per electron.
 
@@ -434,6 +546,7 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
     lines = [f"# Characterization of {info.get('Name', 'ASI camera')}", ""]
     bias, gain, temp = out.read("bias"), out.read("gain"), out.read("temperature")
     temp = [r for r in temp if "bias_noise_adu" in r]
+    short, readout = out.read("short"), out.read("readout")
 
     if bias:
         offsets = sorted({r["offset"] for r in bias})
@@ -563,12 +676,68 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
         fig.tight_layout()
         fig.savefig(folder / "temperature.png", dpi=110)
         lines += ["## Noise and dark current vs temperature", "", "![temperature](temperature.png)", ""]
-        lines += ["| T [degC] | exposure [s] | read noise [ADU] | dark [ADU/s] mean | hot fraction |"]
-        lines += ["|---|---|---|---|---|"]
+        lines += ["| T [degC] | exposure [s] | bias [ADU] | read noise [ADU] | dark [ADU/s] mean | hot fraction |"]
+        lines += ["|---|---|---|---|---|---|"]
         for r in temp:
             lines.append(
-                f"| {r['temp']:.1f} | {r['exposure']:.0f} | {r['bias_noise_adu']:.2f} | "
+                f"| {r['temp']:.1f} | {r['exposure']:.0f} | {r['bias_mean']:.2f} | {r['bias_noise_adu']:.2f} | "
                 f"{r['dark_adu_per_s_mean']:.5f} | {r['hot_frac']:.5f} |"
+            )
+        lines.append("")
+
+    if short:
+        rows = [r for r in short if r["exposure"] >= SHORT_FIT_MIN_S]
+        t = np.array([r["exposure"] for r in short])
+        level = np.array([r["level"] for r in short])
+        rate, level0 = np.polyfit([r["exposure"] for r in rows], [r["level"] for r in rows], 1)
+        # bias of the same gain and offset from the bias step, if there is one
+        match = [
+            b["mean"] for b in out.read("bias") if b["gain"] == short[0]["gain"] and b["offset"] == short[0]["offset"]
+        ]
+        lines += [
+            "## Short exposures",
+            "",
+            f"Level of the central window vs. exposure time (gain {short[0]['gain']}, offset {short[0]['offset']}), "
+            f"{SHORT_FRAMES} frames per point. Line fitted from {SHORT_FIT_MIN_S * 1000:.0f} ms on: "
+            f"{rate:.0f} ADU/s, level {level0:.1f} ADU at zero exposure.",
+        ]
+        if match:
+            lines.append(
+                f"The bias frame level is {match[0]:.1f} ADU, so the line corresponds to an exposure offset of "
+                f"{(level0 - match[0]) / rate * 1e6:+.0f} us."
+            )
+        lines += ["", "| exposure [ms] | level [ADU] | std of frames [ADU] | deviation from the line [us] |"]
+        lines += ["|---|---|---|---|"]
+        for r in short:
+            dev = (r["level"] - (level0 + rate * r["exposure"])) / rate * 1e6
+            lines.append(f"| {r['exposure'] * 1000:.3f} | {r['level']:.1f} | {r['level_std']:.2f} | {dev:+.0f} |")
+        fig, ax = plt.subplots(figsize=(6, 4.5))
+        ax.loglog(t * 1000, level - (match[0] if match else level0), "o-", label="measured")
+        ax.loglog(t * 1000, rate * t + level0 - (match[0] if match else level0), "--", label="line from >= 1 ms")
+        ax.set_xlabel("exposure time [ms]")
+        ax.set_ylabel("level above bias [ADU]")
+        ax.grid(alpha=0.3, which="both")
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(folder / "short.png", dpi=110)
+        lines += ["", "![short](short.png)", ""]
+
+    if readout:
+        lines += [
+            "## Readout",
+            "",
+            "Full frame at the minimum exposure. Frame time is from the start of the exposure until the camera reports "
+            "it done, the download is the copy of the data afterwards. Noise is from a pair of frames on a central "
+            f"{CUTOUT}x{CUTOUT} window of the binned image; for RAW8 it is dominated by rounding.",
+            "",
+            "| high speed | bin | type | size | frame time [s] | download [s] | noise [ADU] |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for r in readout:
+            noise = "" if r["noise_adu"] is None else f"{r['noise_adu']:.2f}"
+            lines.append(
+                f"| {r['high_speed']} | {r['bins']} | {r['type']} | {r['width']}x{r['height']} | "
+                f"{r['exposure_s']:.3f} | {r['download_s']:.3f} | {noise} |"
             )
         lines.append("")
 
@@ -578,7 +747,7 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("step", choices=["bias", "gain", "temperature", "flat", "report"])
+    parser.add_argument("step", choices=["bias", "gain", "temperature", "flat", "short", "readout", "report"])
     parser.add_argument("--sdk", default="sdk/x64/libASICamera2.so")
     parser.add_argument("--out", default="characterization")
     parser.add_argument("--gains", type=int, nargs="+", help="gains for the bias or gain step")
@@ -588,6 +757,9 @@ def main() -> None:
     parser.add_argument("--gain", type=int, default=DEFAULT_GAIN, help="gain for the temperature step")
     parser.add_argument("--offset", type=int, default=DEFAULT_OFFSET)
     parser.add_argument("--target-temp", type=int, default=20, help="cooler target for the gain step in degC")
+    parser.add_argument(
+        "--reference", type=float, default=SHORT_REFERENCE_S, help="reference exposure in s, short step"
+    )
     parser.add_argument("--no-cooling", action="store_true", help="gain step with the cooler off")
     args = parser.parse_args()
 
@@ -616,6 +788,10 @@ def main() -> None:
             )
         elif args.step == "flat":
             run_flat(cam, out, args.gains or FLAT_GAINS, args.offset)
+        elif args.step == "short":
+            run_short(cam, out, args.gain, args.offset, args.reference)
+        elif args.step == "readout":
+            run_readout(cam, out, args.gain, args.offset)
         elif args.step == "temperature":
             run_temperature(cam, out, args.temperatures, args.gain, args.offset)
     finally:

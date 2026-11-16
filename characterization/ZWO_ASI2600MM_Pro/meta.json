@@ -1,0 +1,212 @@
+{
+ "info": {
+  "Name": "ZWO ASI2600MM Pro",
+  "CameraID": 0,
+  "MaxHeight": 4176,
+  "MaxWidth": 6248,
+  "IsColorCam": false,
+  "BayerPattern": 0,
+  "SupportedBins": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "SupportedVideoFormat": [
+   0,
+   2
+  ],
+  "PixelSize": 3.76,
+  "MechanicalShutter": false,
+  "ST4Port": 0,
+  "IsCoolerCam": true,
+  "IsUSB3Host": true,
+  "IsUSB3Camera": true,
+  "ElecPerADU": 0.24286292493343353,
+  "BitDepth": 16,
+  "IsTriggerCam": 0
+ },
+ "sdk": "sdk/x64/libASICamera2.so",
+ "controls": {
+  "Gain": {
+   "Name": "Gain",
+   "Description": "Gain",
+   "MaxValue": 700,
+   "MinValue": -25,
+   "DefaultValue": 200,
+   "IsAutoSupported": true,
+   "IsWritable": true,
+   "ControlType": 0
+  },
+  "Exposure": {
+   "Name": "Exposure",
+   "Description": "Exposure Time(us)",
+   "MaxValue": 2000000000,
+   "MinValue": 32,
+   "DefaultValue": 10000,
+   "IsAutoSupported": true,
+   "IsWritable": true,
+   "ControlType": 1
+  },
+  "Offset": {
+   "Name": "Offset",
+   "Description": "offset",
+   "MaxValue": 240,
+   "MinValue": 0,
+   "DefaultValue": 1,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 5
+  },
+  "BandWidth": {
+   "Name": "BandWidth",
+   "Description": "The total data transfer rate percentage",
+   "MaxValue": 100,
+   "MinValue": 40,
+   "DefaultValue": 50,
+   "IsAutoSupported": true,
+   "IsWritable": true,
+   "ControlType": 6
+  },
+  "Flip": {
+   "Name": "Flip",
+   "Description": "Flip: 0->None 1->Horiz 2->Vert 3->Both",
+   "MaxValue": 3,
+   "MinValue": 0,
+   "DefaultValue": 0,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 9
+  },
+  "AutoExpMaxGain": {
+   "Name": "AutoExpMaxGain",
+   "Description": "Auto exposure maximum gain value",
+   "MaxValue": 700,
+   "MinValue": -25,
+   "DefaultValue": 337,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 10
+  },
+  "AutoExpMaxExpMS": {
+   "Name": "AutoExpMaxExpMS",
+   "Description": "Auto exposure maximum exposure value(unit ms)",
+   "MaxValue": 60000,
+   "MinValue": 1,
+   "DefaultValue": 100,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 11
+  },
+  "AutoExpTargetBrightness": {
+   "Name": "AutoExpTargetBrightness",
+   "Description": "Auto exposure target brightness value",
+   "MaxValue": 160,
+   "MinValue": 50,
+   "DefaultValue": 100,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 12
+  },
+  "HardwareBin": {
+   "Name": "HardwareBin",
+   "Description": "Is hardware bin2:0->No 1->Yes",
+   "MaxValue": 1,
+   "MinValue": 0,
+   "DefaultValue": 0,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 13
+  },
+  "HighSpeedMode": {
+   "Name": "HighSpeedMode",
+   "Description": "Is high speed mode:0->No 1->Yes",
+   "MaxValue": 1,
+   "MinValue": 0,
+   "DefaultValue": 0,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 14
+  },
+  "Temperature": {
+   "Name": "Temperature",
+   "Description": "Sensor temperature(degrees Celsius)",
+   "MaxValue": 1000,
+   "MinValue": -500,
+   "DefaultValue": 20,
+   "IsAutoSupported": false,
+   "IsWritable": false,
+   "ControlType": 8
+  },
+  "CoolPowerPerc": {
+   "Name": "CoolPowerPerc",
+   "Description": "Cooler power percent",
+   "MaxValue": 100,
+   "MinValue": 0,
+   "DefaultValue": 0,
+   "IsAutoSupported": false,
+   "IsWritable": false,
+   "ControlType": 15
+  },
+  "TargetTemp": {
+   "Name": "TargetTemp",
+   "Description": "Target temperature(cool camera only)",
+   "MaxValue": 30,
+   "MinValue": -40,
+   "DefaultValue": 0,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 16
+  },
+  "CoolerOn": {
+   "Name": "CoolerOn",
+   "Description": "turn on/off cooler(cool camera only)",
+   "MaxValue": 1,
+   "MinValue": 0,
+   "DefaultValue": 0,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 17
+  },
+  "AntiDewHeater": {
+   "Name": "AntiDewHeater",
+   "Description": "turn on/off anti dew heater(cool camera only)",
+   "MaxValue": 1,
+   "MinValue": 0,
+   "DefaultValue": 0,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 21
+  },
+  "FanSpeedAdjust": {
+   "Name": "FanSpeedAdjust",
+   "Description": "adjust fan speed(cool camera only)",
+   "MaxValue": 255,
+   "MinValue": 0,
+   "DefaultValue": 255,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 22
+  },
+  "PowerLedBright": {
+   "Name": "PowerLedBright",
+   "Description": "adjust power led brightness",
+   "MaxValue": 255,
+   "MinValue": 0,
+   "DefaultValue": 255,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 23
+  },
+  "UsbHubReset": {
+   "Name": "UsbHubReset",
+   "Description": "reset the power of usb hub",
+   "MaxValue": 1,
+   "MinValue": 0,
+   "DefaultValue": 255,
+   "IsAutoSupported": false,
+   "IsWritable": true,
+   "ControlType": 24
+  }
+ }
+}

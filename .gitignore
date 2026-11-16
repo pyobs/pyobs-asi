@@ -1,0 +1,10 @@
+.idea/
+.claude/
+__pycache__/
+
+# characterization: only the measurements (JSON lines) and meta.json are kept
+characterization/*.log
+characterization/*.jsonl
+characterization/*/frames/
+characterization/*/*.png
+characterization/*/report.md

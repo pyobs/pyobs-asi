@@ -117,10 +117,18 @@ weights of 1/variance. The bias comes from the intercept of level vs exposure ti
 | Gain | e-/ADU | ADU/e- | Slope error | Read noise [e-] (bias pairs) | Full scale [e-] |
 |---|---|---|---|---|---|
 | 0 | 0.783 | 1.277 | 0.3% | 3.5 | 50885 |
+| 25 | 0.584 | 1.712 | 0.5% | not measured | 37981 |
 | 50 | 0.441 | 2.270 | 0.3% | 3.3 | 28632 |
+| 75 | 0.330 | 3.029 | 0.7% | not measured | 21461 |
 | 100 | 0.255 | 3.914 | 0.5% | 1.4 | 16619 |
+| 150 | 0.142 | 7.026 | 1.2% | not measured | 9258 |
 | 200 | 0.081 | 12.35 | 0.2% | 1.3 | 5263 |
+| 250 | 0.045 | 22.11 | 0.8% | not measured | 2936 |
 | 300 | 0.026 | 39.08 | 0.2% | 1.3 | 1659 |
+
+Gains 25, 75, 150 and 250 were measured in a later run (same set-up, sensor at 28.6 to 29.1 degC, offset 50). Their
+full scale uses the bias from the fit intercept, which is off by up to 136 ADU at gains 150 and 250 (see the short
+exposure section), so it is good to about 1%.
 
 ![Photon transfer and linearity](images/ASI2600MM_Pro_flat.png)
 
@@ -131,9 +139,14 @@ weights of 1/variance. The bias comes from the intercept of level vs exposure ti
 - The read noise in electrons is the bias-pair noise (see the table above) times e-/ADU. The intercept of the photon
   transfer fit is not usable for it, because the lowest signal is 1900 ADU.
 - Linearity in exposure time: the largest deviation is 0.8% to 1.8% at gains 0 to 200, mostly scatter of about 0.5%
-  between points. Gain 300 at 0.49 ms is +4.3% (shutter timing or lamp flicker at short exposures, not separated).
+  between points. Gain 300 at 0.49 ms is +4.3%, and gains 150 and 250 also reach 4.5% to 5.1% at their shortest exposures (0.4 to 0.7
+ms). The short exposure section below shows an effective exposure offset of about 90 us, which explains them (inferred).
   One pair at gain 100 had 3% lamp drift. The lamp and the wall were not characterised, so these are upper limits.
-- Not verified here: the dependence on temperature, and the result for gains between the ones measured.
+- Gains between the first five (25, 75, 150, 250) follow the same law, `0.783 * 10^(-gain/200)` e-/ADU: the measured
+  values are -0.5%, 0.0%, +2.2% and +2.7% from it. The deviations at 150 and 250 are 2 to 3 times the fit errors and
+  the nonlinearity of those two runs is 4.5% and 5.1% (shortest exposures), so the gain error there may be
+  systematic (inferred). The preset formula in `presets.py` is good to about 3% for all gains tested.
+- Not verified here: the dependence on temperature.
 
 ## Gain from the dark-current shot noise (cross-check, rough)
 
@@ -146,8 +159,10 @@ against the dark signal gives the gain in ADU per electron, but the dark signal 
 | 100 | 0.23 | 0.255 | 0.90 |
 | 300 | 0.016 | 0.026 | 0.62 |
 
-The estimate is off by up to a factor 1.7. With the MAD instead of the standard deviation the slopes change by 15% to
-80%, so hot pixels and the small signal limit this method. Use the light source result.
+The estimate is off by up to a factor 1.7. The small dark signal (0.2 to 71 ADU) and the hot pixels limit this
+method. A fit with the MAD instead of the standard deviation changes the slopes by 15% to 80%, but that comparison is
+not meaningful: for noise of a few ADU the MAD of integer data moves in steps of about 1.5 ADU, so the MAD variances
+repeat (9.9, 17.6, 17.6 ADU^2 at gain 0). Use the light source result.
 
 ![Dark shot noise](images/ASI2600MM_Pro_gain.png)
 
@@ -176,6 +191,10 @@ Hot pixels are the fraction of pixels more than 20 sigma (bias MAD noise) above 
 
 - Dark current doubles every 4.0 degC (60 s) to 4.6 degC (300 s) (exponential fit of the means, 15 to -10 degC).
 - Read noise does not change with temperature (5.66 to 5.68 ADU).
+- The bias level rises by 0.11 ADU from 16 degC to -10 degC (500.57 to 500.68 ADU, 0.004 ADU per degC), a drift much
+  smaller than the read noise. The 0.1 to 0.3 ADU bias drift suspected below as a cause of the 300 s excess is of the
+  same size as this, so it cannot be ruled out. The temperature step now stores the bias level per target and the
+  table in `report.md` shows it.
 - At 0 degC the dark current is 0.0011 to 0.0012 e-/s/pixel; ZWO lists 0.0022 e/s/pixel at 0 degC and 0.00012 at
   -20 degC (not verified, I do not know whether this is a mean or a median). Our extrapolation to -20 degC is about
   0.00006 e-/s (inference, not measured).
@@ -192,10 +211,113 @@ Hot pixels are the fraction of pixels more than 20 sigma (bias MAD noise) above 
 - Reopening the camera switches the cooler off. A warm-up script after stopping a run must switch it on again at the
   current temperature before it ramps, otherwise the sensor warms up uncontrolled (12 degC in about 2 min seen here).
 
+## Frame check (measured)
+
+Check of the 41 central 512x512 cutouts (bias, dark, gain and flat steps) for structure, in single frames:
+
+- No correlated noise: the correlation of neighbouring pixels is below 0.03 along x and y, column means match white
+  noise.
+- Row means vary 1.6 to 1.8 times more than white noise in bias frames and short darks: a small row banding of about
+  6% of the read noise (about 0.3 ADU at gain 100, estimate). It is hidden by the dark noise in the warm 300 s darks.
+- Even rows are lower than odd rows by 0.24 ADU at gain 0 and 0.45 ADU at gain 100, growing with gain by a factor 3.2
+  per 100 gain units, so it is a fixed offset of about 0.1 to 0.2 e-. Odd and even columns do not differ. In the flats
+  the odd and even rows differ by about 0.04%. Both are statistically significant but too small to matter.
+- The four quadrants of a bias frame differ by 0.06 ADU at gain 100. In darks the difference grows with the dark
+  signal (0.58 ADU at 15 degC and 300 s, 0.02 ADU at -10 degC and 300 s): dark current non-uniformity.
+- The images (bias, dark 300 s at 15 and -10 degC, flat) show uniform noise. The flat has a smooth gradient of about
+  3% across the cutout, probably the illumination.
+
+The cutouts cover only the middle of the sensor, so amp glow at the edges was checked separately with a full frame.
+
+**Full-frame dark (measured).** One 300 s dark of 6248x4176 pixels at 10 degC, gain 100, offset 50, minus a 0.1 s dark
+(taken through the driver, see below). The median of the dark signal is 5 ADU in all blocks of an 8x8 grid, so there is
+no glow pattern. The block means run from 5.9 to 6.5 ADU, the edges and the bottom right corner are 0.2 to 0.4 ADU
+higher than the centre (6.1 ADU), under 7% of the dark signal after 300 s. I read that as a gentle gradient of the dark
+current, not as amp glow. The mean over the full frame is 0.0205 ADU/s, i.e. 0.0051 e-/s (with 0.2476 e-/ADU), which
+agrees with 0.0056 e-/s from the cutouts at 10 degC. 0.17% of the pixels are more than 20 sigma above the median (0.25%
+in the cutout run).
+
+## Driver test on the camera (measured)
+
+`AsiCoolCamera` run standalone with `LocalComm` in one process (the camera stays open, so the cooler state is kept):
+
+- Open with `camera: ZWO ASI2600MM Pro`, `get_controls()` in `open()` works. Defaults: gain 100, offset 50.
+- `IMode` capabilities are `Gain: [Low noise, High capacity]`. Switching the modes gives gain 100 or 0, `DET-GAIN`
+  0.2476 or 0.783 and `OFFSET` 50 in the FITS header. A manual `set_gain(150)` leaves the mode unset. An invalid mode or
+  group raises `InvalidArgumentError`. `reset()` returns to Low noise.
+- `AsiCamera` wrote `DET-GAIN` and `OFFSET` but no `GAIN` keyword (`AsiVideo` does); fixed in pyobs/pyobs-asi#81.
+- `set_cooling(True, 10)` right after `open()` ramps from the wrong temperature, because the SDK reports 0.0 degC for
+  a moment (pyobs/pyobs-asi#79). The sensor was cooled to about 3 degC before it returned to the target of 10 degC.
+- Closing with warm-up on close stopped after exactly 300 s, the default `cooling_close_timeout`, with the cooler
+  still 5 degC below the 20 degC off temperature (pyobs/pyobs-asi#80).
+- Both are fixed in pyobs/pyobs-asi#81 (waits for the first non-zero temperature, estimates the close timeout from the
+  setpoint, new warm-up defaults 15 degC and 2 degC/min). Checked on the camera: after `open()` the temperature is
+  non-zero, the ramp starts at the sensor temperature, the `GAIN` header is written.
+- The warm-up on close stopped after one step at 0 degC (cooler off at 0 degC, 30 s after the first step). With the
+  cooler off the sensor warms about 14 degC/min (measured: 0 to 8 degC in 35 s). The cause is the early stop of the core
+  ramp, which compared only the sensor with the setpoint while the sensor still lagged; fixed in
+  pyobs/pyobs-core#1077 by also requiring a cooler power of 0. With that fix the close from 0 degC took 450 s: setpoint
+  steps of 1 degC every 30 s to 15 degC, the sensor followed within 1 degC, the power fell from 36% to 0%.
+
+## Short exposures (measured)
+
+Level of the central 512x512 window vs exposure time with the wall and lamp, sensor at 28 degC, gain 100, offset 50,
+5 frames per point and a reference exposure of 25 ms between the points (`short` step with `--reference 0.025`).
+
+| Exposure [ms] | Level [ADU] | Effective exposure [us] |
+|---|---|---|
+| 0.032 (minimum) | 591.4 | 99 |
+| 0.050 | 591.3 | 99 |
+| 0.100 | 665.8 | 180 |
+| 0.200 | 739.7 | 260 |
+| 0.500 | 1033.9 | 580 |
+| 1 | 1472.0 | 1057 |
+| 2 | 2420.8 | 2090 |
+
+![Level vs exposure time](images/ASI2600MM_Pro_short.png)
+
+The effective exposure is (level - 500.6 ADU) divided by the slope of the line fitted from 1 ms on (918947 ADU/s).
+
+- From 1 ms to 50 ms the level is linear: the deviations from the line are within 35 us, and 50 ms (70% of full scale)
+  is within 0.03%.
+- Exposures of 100 us and longer collect the light of about 60 to 90 us more than set. The line extrapolates to an
+  exposure offset of +92 us. A shorter set time does not give less light: 32 us and 50 us gave the same level, as if
+  the shortest exposure were about 100 us (inferred from these points only).
+- Relative to the set time this is 9% at 1 ms and 90% at 100 us. Flat-field photon transfer and short-exposure
+  photometry need the offset, because the level is not proportional to the set time below a few ms. An intercept based
+  bias (as in the flat step) is wrong by rate times 92 us.
+- Not checked: a dependence on gain, temperature or ROI size. The frame-to-frame std grows to 0.2% at 10 ms, which
+  fits lamp flicker, so the lamp limits the precision above 5 ms.
+
+## Readout time and high speed mode (measured)
+
+Full frame at the minimum exposure, gain 100, offset 50, cooler off (`readout` step). Frame time is from the start of
+the exposure to "done"; the download adds 0.02 to 0.08 s.
+
+| Mode | Bin | Frame time [s] | Noise per pixel [ADU] |
+|---|---|---|---|
+| RAW16, high speed off | 1 | 0.558 | 5.66 |
+| RAW16, high speed off | 2 | 0.561 | 2.87 |
+| RAW16, high speed off | 4 | 0.557 | 1.46 |
+| RAW16, high speed on | 1 | 0.426 | 9.64 |
+| RAW16, high speed on | 2 | 0.427 | 4.93 |
+| RAW8, high speed off | 1 | 0.559 | rounding only |
+| RAW8, high speed on | 1 | 0.361 | rounding only |
+
+- The frame time does not depend on the binning (0.557 to 0.561 s for bins 1 to 4): the sensor is always read out in
+  full. Binning saves download data, not time (inferred).
+- High speed mode shortens the frame time from 0.558 s to 0.426 s (RAW16, 24%) or 0.361 s (RAW8, 35%), but the read
+  noise rises by 70% at gain 100 (9.64 vs 5.66 ADU). `asi-gui` sets it to 0 on startup.
+- The noise falls like 1/bin in both modes, as in the binning measurement above (averaging).
+- RAW8 noise is rounding (0.1 to 1 ADU at a level of about 2 ADU), not read noise.
+- Not tried: `HardwareBin`, the `BandWidth` control, and the exposure time that goes with a longer exposure (the frame
+  time here is the minimum, a 1 s exposure adds its length plus readout, not checked).
+
 ## Not done
 
-Flat-field uniformity and dust, the gain between the measured gain values, the dependence of the gain on temperature,
-and dark current below -10 degC (not reachable much further in this room).
+Flat-field uniformity and dust, the dependence of the gain on temperature, the short-exposure offset at other gains
+and temperatures, the read noise at gains 25, 75, 150 and 250, and dark current below -10 degC (not reachable much
+further in this room).
 
 ## GUI (`asi-gui`)
 
@@ -203,7 +325,7 @@ and dark current below -10 degC (not reachable much further in this room).
 - Cooler on/off, target, and a readout of sensor temperature and cooler power every 2 s.
 - Default format INT16, exposure time clamped to the SDK minimum, window rounded to the SDK alignment.
 - A failed exposure or an all-zero frame is not shown and no longer leaves the Expose button stuck.
-- Not tested: switching the cooler on from the GUI (the cooler itself works, tested from the script).
+- Cooler on/off, target and the readout were tested from the GUI by hand; the cooler also works from the script and from the driver.
 
 ## Reproduce
 
@@ -220,8 +342,18 @@ The `flat` step needs the lens uncapped, pointed at a steady, defocused light so
 
 ```bash
 uv run python tools/characterize.py flat
+uv run python tools/characterize.py flat --gains 25 75 150 250
+uv run python tools/characterize.py short --reference 0.025
 ```
+
+`short` takes the reference exposure so that the light source gives a good signal; `readout` needs no light.
 
 The `gain` step cools to `--target-temp` (default 20 degC; the run above used `--target-temp 10`), or use `--no-cooling`.
 
 Results go to `characterization/<camera name>/` (JSON lines, a few 512x512 cutouts as FITS, plots and `report.md`).
+The measurements of the ASI2600MM Pro are in `characterization/ZWO_ASI2600MM_Pro/` (`bias.jsonl`, `gain.jsonl`,
+`flat.jsonl`, `short.jsonl`, `readout.jsonl`, `temperature.jsonl`, `templog.jsonl`, `meta.json`). `uv run python tools/characterize.py report` rebuilds
+the plots and `report.md` from them, no camera needed. The FITS cutouts, the plots there and the logs are not kept in
+git. `templog.jsonl` is the temperature log of all runs, including the stopped ones, so it is not a clean series. The
+`gain.jsonl` points are from the cooled run at 10 degC (target 10, sensor 9.6 to 10.0 degC), the dark runs of the
+earlier days were discarded.

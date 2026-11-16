@@ -83,6 +83,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cooling_target: tuple[bool, float] | None = None
         self.cooling_wakeup = asyncio.Event()
         self.cooling_task: asyncio.Task[None] | None = None
+        self.warmup_task: asyncio.Task[None] | None = None
+        self._close_confirmed = False
         if "CoolerOn" in controls and "TargetTemp" in controls:
             self.cooling = CoolingWidget(
                 (controls["TargetTemp"]["MinValue"], controls["TargetTemp"]["MaxValue"]),
@@ -219,18 +221,55 @@ class MainWindow(QtWidgets.QMainWindow):
         self.abort_exposure.set()
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
-        if self.cooling_target is not None:
-            answer = QtWidgets.QMessageBox.question(
-                self,
-                "Cooling ramp running",
-                "The cooling setpoint is still being ramped. Closing now leaves the camera at an intermediate "
-                "setpoint with the cooler on. Close anyway?",
-            )
-            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
-                event.ignore()
-                return
+        # Closing the camera switches the cooler off at once, which warms the sensor abruptly. So with the cooler
+        # on, offer to warm up first.
+        if not self._close_confirmed and self.cooling is not None and self.cooling_ramper.cooler_is_on():
+            event.ignore()
+            if self.warmup_task is None or self.warmup_task.done():
+                self._ask_close()
+            return
         self.camera.close()
         super().closeEvent(event)
+
+    def _ask_close(self) -> None:
+        minutes = self.cooling_ramper.warmup_minutes()
+        duration = "" if minutes is None else f" (about {minutes:.0f} min)"
+        box = QtWidgets.QMessageBox(self)
+        box.setWindowTitle("Cooler is on")
+        box.setText(
+            "Closing the camera switches the cooler off at once, which warms the sensor abruptly.\n"
+            f"Warm up first{duration}?"
+        )
+        warm = box.addButton("Warm up, then close", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        now = box.addButton("Close now", QtWidgets.QMessageBox.ButtonRole.DestructiveRole)
+        box.addButton(QtWidgets.QMessageBox.StandardButton.Cancel)
+        box.exec()
+        if box.clickedButton() is warm:
+            self.warmup_task = asyncio.create_task(self._warm_up_and_close())
+        elif box.clickedButton() is now:
+            self._close_confirmed = True
+            self.close()
+
+    async def _warm_up_and_close(self) -> None:
+        """Ramps to the off temperature, switches the cooler off, then closes the window."""
+        progress = QtWidgets.QProgressDialog("Warming up...", "Close now", 0, 0, self)
+        progress.setWindowTitle("Warming up")
+        progress.setMinimumDuration(0)
+        progress.show()
+
+        await self._cooling_changed(False, self.cooling_ramper.ramp.off_temperature)
+        while self.cooling_task is not None and not self.cooling_task.done() and not progress.wasCanceled():
+            temperature = self.camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.0
+            progress.setLabelText(f"Warming up, sensor at {temperature:.1f} \N{DEGREE SIGN}C...")
+            await asyncio.sleep(1.0)
+        progress.close()
+
+        if progress.wasCanceled():
+            # stop the ramp, the camera is closed right away
+            self.cooling_target = None
+            self.cooling_wakeup.set()
+        self._close_confirmed = True
+        self.close()
 
 
 async def async_main(app: QtWidgets.QApplication) -> None:

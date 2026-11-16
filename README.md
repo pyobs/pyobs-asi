@@ -72,6 +72,10 @@ The setpoint is changed in steps (default 2 degC/min when cooling down, 1 degC/m
 cooler is switched off only after warming up). Use `cooling_rate_cool`, `cooling_rate_warm` and `cooling_ramp_step`
 to change this, see *CoolingRampMixin* in *pyobs-core*.
 
+Closing the camera switches the cooler off at once, so the module warms the sensor up first when it is closed
+(`cooling_warmup_on_close`, default true). Warming up from -20 degC takes about 40 minutes at the default rate, so
+`cooling_close_timeout` (default 300 s) limits the wait, after which the camera is closed anyway.
+
 
 GUI
 ---

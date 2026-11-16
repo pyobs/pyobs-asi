@@ -476,13 +476,30 @@ class AsiCoolCamera(CoolingRampMixin, AsiCamera, ICooling):
     # ASI_TARGET_TEMP is an integer
     _cooling_setpoint_resolution = 1.0
 
-    def __init__(self, setpoint: int = -20, **kwargs: Any):
+    def __init__(
+        self,
+        setpoint: int = -20,
+        cooling_warmup_on_close: bool = True,
+        cooling_close_timeout: float = 300.0,
+        **kwargs: Any,
+    ):
         """Initializes a new AsiCoolCamera.
+
+        Closing the camera handle switches the cooler off at once, so unlike the generic mixin, this module warms
+        the sensor up on close by default.
 
         Args:
             setpoint: Cooling temperature setpoint that full_reset() cools to.
+            cooling_warmup_on_close: Warm up and switch the cooler off before closing the camera.
+            cooling_close_timeout: Maximum time in seconds that warm-up on close may take. When it runs out, the
+                camera is closed anyway and the cooler switches off abruptly.
         """
-        CoolingRampMixin.__init__(self, **kwargs)
+        CoolingRampMixin.__init__(
+            self,
+            cooling_warmup_on_close=cooling_warmup_on_close,
+            cooling_close_timeout=cooling_close_timeout,
+            **kwargs,
+        )
         self._temp_setpoint = setpoint
 
     async def open(self) -> None:

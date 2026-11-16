@@ -123,3 +123,25 @@ async def test_cool_camera_disable_ramps_up_then_switches_off() -> None:
 
     assert fake.cooler_on is False
     assert not module.cooling_ramping
+
+
+def test_warmup_minutes_follows_warm_rate() -> None:
+    camera = FakeCamera(sensor=-19.5, cooler_on=True, target=-20)
+    assert SdkCoolingRamper(camera).warmup_minutes() == 40.0  # -20 -> 20 degC at 1 degC/min
+
+
+def test_warmup_minutes_is_none_when_cooler_is_off() -> None:
+    camera = FakeCamera(sensor=5.0, cooler_on=False)
+    assert SdkCoolingRamper(camera).warmup_minutes() is None
+
+
+def test_module_warms_up_on_close_by_default() -> None:
+    module = AsiCoolCamera(camera="test")
+    assert module._cooling_warmup_on_close is True
+    assert module._cooling_close_timeout == 300.0
+
+
+def test_module_warmup_on_close_can_be_disabled() -> None:
+    module = AsiCoolCamera(camera="test", cooling_warmup_on_close=False, cooling_close_timeout=10.0)
+    assert module._cooling_warmup_on_close is False
+    assert module._cooling_close_timeout == 10.0

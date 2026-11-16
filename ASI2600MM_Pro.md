@@ -146,8 +146,10 @@ against the dark signal gives the gain in ADU per electron, but the dark signal 
 | 100 | 0.23 | 0.255 | 0.90 |
 | 300 | 0.016 | 0.026 | 0.62 |
 
-The estimate is off by up to a factor 1.7. With the MAD instead of the standard deviation the slopes change by 15% to
-80%, so hot pixels and the small signal limit this method. Use the light source result.
+The estimate is off by up to a factor 1.7. The small dark signal (0.2 to 71 ADU) and the hot pixels limit this
+method. A fit with the MAD instead of the standard deviation changes the slopes by 15% to 80%, but that comparison is
+not meaningful: for noise of a few ADU the MAD of integer data moves in steps of about 1.5 ADU, so the MAD variances
+repeat (9.9, 17.6, 17.6 ADU^2 at gain 0). Use the light source result.
 
 ![Dark shot noise](images/ASI2600MM_Pro_gain.png)
 
@@ -192,10 +194,30 @@ Hot pixels are the fraction of pixels more than 20 sigma (bias MAD noise) above 
 - Reopening the camera switches the cooler off. A warm-up script after stopping a run must switch it on again at the
   current temperature before it ramps, otherwise the sensor warms up uncontrolled (12 degC in about 2 min seen here).
 
+## Frame check (measured)
+
+Check of the 41 central 512x512 cutouts (bias, dark, gain and flat steps) for structure, in single frames:
+
+- No correlated noise: the correlation of neighbouring pixels is below 0.03 along x and y, column means match white
+  noise.
+- Row means vary 1.6 to 1.8 times more than white noise in bias frames and short darks: a small row banding of about
+  6% of the read noise (about 0.3 ADU at gain 100, estimate). It is hidden by the dark noise in the warm 300 s darks.
+- Even rows are lower than odd rows by 0.24 ADU at gain 0 and 0.45 ADU at gain 100, growing with gain by a factor 3.2
+  per 100 gain units, so it is a fixed offset of about 0.1 to 0.2 e-. Odd and even columns do not differ. In the flats
+  the odd and even rows differ by about 0.04%. Both are statistically significant but too small to matter.
+- The four quadrants of a bias frame differ by 0.06 ADU at gain 100. In darks the difference grows with the dark
+  signal (0.58 ADU at 15 degC and 300 s, 0.02 ADU at -10 degC and 300 s): dark current non-uniformity.
+- The images (bias, dark 300 s at 15 and -10 degC, flat) show uniform noise. The flat has a smooth gradient of about
+  3% across the cutout, probably the illumination.
+
+The cutouts cover only the middle of the sensor, so amp glow at the edges is not checked. That needs one full-frame
+dark (6248x4176, 300 s).
+
 ## Not done
 
-Flat-field uniformity and dust, the gain between the measured gain values, the dependence of the gain on temperature,
-and dark current below -10 degC (not reachable much further in this room).
+Amp glow at the sensor edges (full-frame dark), flat-field uniformity and dust, the gain between the measured gain
+values, the dependence of the gain on temperature, bias drift with temperature, short exposures below about 1 ms, and
+dark current below -10 degC (not reachable much further in this room).
 
 ## GUI (`asi-gui`)
 

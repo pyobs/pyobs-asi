@@ -210,12 +210,33 @@ Check of the 41 central 512x512 cutouts (bias, dark, gain and flat steps) for st
 - The images (bias, dark 300 s at 15 and -10 degC, flat) show uniform noise. The flat has a smooth gradient of about
   3% across the cutout, probably the illumination.
 
-The cutouts cover only the middle of the sensor, so amp glow at the edges is not checked. That needs one full-frame
-dark (6248x4176, 300 s).
+The cutouts cover only the middle of the sensor, so amp glow at the edges was checked separately with a full frame.
+
+**Full-frame dark (measured).** One 300 s dark of 6248x4176 pixels at 10 degC, gain 100, offset 50, minus a 0.1 s dark
+(taken through the driver, see below). The median of the dark signal is 5 ADU in all blocks of an 8x8 grid, so there is
+no glow pattern. The block means run from 5.9 to 6.5 ADU, the edges and the bottom right corner are 0.2 to 0.4 ADU
+higher than the centre (6.1 ADU), under 7% of the dark signal after 300 s. I read that as a gentle gradient of the dark
+current, not as amp glow. The mean over the full frame is 0.0205 ADU/s, i.e. 0.0051 e-/s (with 0.2476 e-/ADU), which
+agrees with 0.0056 e-/s from the cutouts at 10 degC. 0.17% of the pixels are more than 20 sigma above the median (0.25%
+in the cutout run).
+
+## Driver test on the camera (measured)
+
+`AsiCoolCamera` run standalone with `LocalComm` in one process (the camera stays open, so the cooler state is kept):
+
+- Open with `camera: ZWO ASI2600MM Pro`, `get_controls()` in `open()` works. Defaults: gain 100, offset 50.
+- `IMode` capabilities are `Gain: [Low noise, High capacity]`. Switching the modes gives gain 100 or 0, `DET-GAIN`
+  0.2476 or 0.783 and `OFFSET` 50 in the FITS header. A manual `set_gain(150)` leaves the mode unset. An invalid mode or
+  group raises `InvalidArgumentError`. `reset()` returns to Low noise.
+- `AsiCamera` writes `DET-GAIN` and `OFFSET` but no `GAIN` keyword (`AsiVideo` does).
+- `set_cooling(True, 10)` right after `open()` ramps from the wrong temperature, because the SDK reports 0.0 degC for
+  a moment (pyobs/pyobs-asi#79). The sensor was cooled to about 3 degC before it returned to the target of 10 degC.
+- Closing with warm-up on close stopped after exactly 300 s, the default `cooling_close_timeout`, with the cooler
+  still 5 degC below the 20 degC off temperature (pyobs/pyobs-asi#80).
 
 ## Not done
 
-Amp glow at the sensor edges (full-frame dark), flat-field uniformity and dust, the gain between the measured gain
+Flat-field uniformity and dust, the gain between the measured gain
 values, the dependence of the gain on temperature, bias drift with temperature, short exposures below about 1 ms, and
 dark current below -10 degC (not reachable much further in this room).
 
@@ -225,7 +246,7 @@ dark current below -10 degC (not reachable much further in this room).
 - Cooler on/off, target, and a readout of sensor temperature and cooler power every 2 s.
 - Default format INT16, exposure time clamped to the SDK minimum, window rounded to the SDK alignment.
 - A failed exposure or an all-zero frame is not shown and no longer leaves the Expose button stuck.
-- Not tested: switching the cooler on from the GUI (the cooler itself works, tested from the script).
+- Cooler on/off, target and the readout were tested from the GUI by hand; the cooler also works from the script and from the driver.
 
 ## Reproduce
 

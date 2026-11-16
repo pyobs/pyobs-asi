@@ -147,9 +147,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cooling.set_power(power)
 
     @qasync.asyncSlot()  # type: ignore
-    async def _expose_clicked(self) -> None:
+    async def _expose_clicked(self, count: int = 1) -> None:
         try:
-            await self._expose()
+            for i in range(count):
+                if self.abort_exposure.is_set():
+                    break
+                self.expose.set_exposures_left(count - i)
+                await self._expose()
         except Exception:
             # don't leave the GUI in the exposing state
             traceback.print_exc()

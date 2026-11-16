@@ -225,3 +225,9 @@ uv run python tools/characterize.py flat
 The `gain` step cools to `--target-temp` (default 20 degC; the run above used `--target-temp 10`), or use `--no-cooling`.
 
 Results go to `characterization/<camera name>/` (JSON lines, a few 512x512 cutouts as FITS, plots and `report.md`).
+The measurements of the ASI2600MM Pro are in `characterization/ZWO_ASI2600MM_Pro/` (`bias.jsonl`, `gain.jsonl`,
+`flat.jsonl`, `temperature.jsonl`, `templog.jsonl`, `meta.json`). `uv run python tools/characterize.py report` rebuilds
+the plots and `report.md` from them, no camera needed. The FITS cutouts, the plots there and the logs are not kept in
+git. `templog.jsonl` is the temperature log of all runs, including the stopped ones, so it is not a clean series. The
+`gain.jsonl` points are from the cooled run at 10 degC (target 10, sensor 9.6 to 10.0 degC), the dark runs of the
+earlier days were discarded.

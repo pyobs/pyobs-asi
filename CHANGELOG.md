@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Entries for releases before this file existed were generated from commit subjects.
 
+## [Unreleased]
+
+- `AsiCoolCamera` ramps the cooling setpoint with pyobs-core's `CoolingRampMixin` (needs pyobs-core 2.24.0).
+  `set_cooling` returns at once and the setpoint is stepped in the background, including warming up before the
+  cooler is switched off. Rates and step are set with `cooling_rate_warm` (default 1 degC/min),
+  `cooling_rate_cool` (default 2 degC/min) and `cooling_ramp_step`. Before, the setpoint was set in one step.
+- The GUI ramps the cooling setpoint the same way and asks before closing while a ramp is running.
+
 ## [2.1.1] - 2026-10-04
 
 - Use __future__ annotations instead of Optional (ruff UP045)

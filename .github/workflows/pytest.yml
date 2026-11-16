@@ -1,8 +1,12 @@
 name: PyTest
-on: push
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
 
 jobs:
-  test:
+  tests:
+    name: test (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -26,3 +30,13 @@ jobs:
         run: uv run pytest tests
         env:
           CI: true
+
+  # Branch protection requires a check named "test". The matrix jobs above report as "test (3.x)", so this job
+  # collects their result under the required name.
+  test:
+    needs: tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check matrix result
+        run: test "${{ needs.tests.result }}" = "success"

@@ -4,6 +4,15 @@ pyobs-asi
 This is a `pyobs <https://www.pyobs.org>`_ (`documentation <https://docs.pyobs.org>`_) module for ASI ZWO cameras.
 
 
+ASI SDK
+*******
+
+The ASI SDK 1.41 libraries for Linux (``armv6``, ``armv7``, ``armv8``, ``x64``, ``x86``) and the udev rules
+(``asi.rules``) are included in the ``sdk/`` folder of the repository, as published by ZWO under the license in
+``sdk/license.txt``. See the README for installation, or point the ``sdk`` parameter to the library for your platform,
+e.g. ``sdk/x64/libASICamera2.so``. Newer versions are available at https://www.zwoastro.com/software/product-sdk/.
+
+
 Example configuration
 *********************
 
@@ -11,6 +20,9 @@ This is an example configuration, tested on a ASI 071 MC::
 
     class: pyobs_asi.AsiCoolCamera
     camera: ZWO ASI071MC Pro
+
+    # optional: path to the ASI SDK library, if it is not installed system-wide
+    sdk: /path/to/pyobs-asi/sdk/x64/libASICamera2.so
 
     # file naming
     filenames: /cache/pyobs-{DAY-OBS|date:}-{FRAMENUM|string:04d}-{IMAGETYP|type}00.fits

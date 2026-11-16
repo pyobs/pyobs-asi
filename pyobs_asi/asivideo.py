@@ -27,6 +27,7 @@ from pyobs.modules.camera import BaseVideo, Frame
 from pyobs.utils.enums import ImageFormat, ImageType
 
 from .blocking import SDK_CALL_TIMEOUT, BlockingSdkMixin
+from .presets import PRESETS, detector_gain
 
 log = logging.getLogger(__name__)
 
@@ -339,8 +340,9 @@ class AsiVideo(BlockingSdkMixin, BaseVideo, IExposureTime, IGain, IWindow, IBinn
         image.header["OFFSET"] = (self._gain_offset, "Black-level offset used for exposure")
         if "PixelSize" in self._camera_info:
             image.header["DET-PIXL"] = (self._camera_info["PixelSize"] / 1000.0, "Size of detector pixels [mm]")
-        if "ElecPerADU" in self._camera_info:
-            image.header["DET-GAIN"] = (self._camera_info["ElecPerADU"] * self._gain, "Detector gain [e-/ADU]")
+        e_per_adu = detector_gain(PRESETS.get(self._camera_name), self._camera_info, self._gain)
+        if e_per_adu is not None:
+            image.header["DET-GAIN"] = (e_per_adu, "Detector gain [e-/ADU]")
         if self._camera_info.get("IsColorCam"):
             image.header["BAYERPAT"] = image.header["COLORTYP"] = ("GBRG", "Bayer pattern for colors")
         return await super()._finish_image(image, broadcast, image_type)

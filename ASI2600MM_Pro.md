@@ -191,7 +191,9 @@ of the frames minus the mean of the bias frames, divided by the exposure time, i
 | -5 | 53% | 5.67 | 0.0004 | 0.0006 | 0.0002 / 0.0011 |
 | -10 | 70% | 5.68 | 0.00013 | 0.00028 | 0.0001 / 0.0008 |
 
-Hot pixels are the fraction of pixels more than 20 sigma (bias MAD noise) above the median of the dark frame.
+Hot pixels are the fraction of pixels more than 20 sigma (bias MAD noise) above the median of the dark frame. This count
+may include pixels with telegraph noise (see the section on salt-and-pepper noise), which are also far from the median
+in single frames.
 
 - Dark current doubles every 4.0 degC (60 s) to 4.6 degC (300 s) (exponential fit of the means, 15 to -10 degC).
 - Read noise does not change with temperature (5.66 to 5.68 ADU).
@@ -270,6 +272,42 @@ in the cutout run).
   (gain 100), as in the temperature series, and the four corners and the centre differ by at most 0.1 ADU (no amp
   glow).
 
+## Salt-and-pepper noise (measured)
+
+Stack of 60 full-frame bias frames (6248x4176, minimum exposure, gain 100, offset 50, cap on, `pixels` step of the
+script), once with the sensor at 29.6 degC (cooler off) and once at -5.6 degC (cooler at 61%). For every pixel the
+standard deviation over the 60 frames is its temporal noise.
+
+| | 29.6 degC | -5.6 degC |
+|---|---|---|
+| Median pixel noise [ADU] | 4.26 | 4.01 |
+| Median pixel noise [e-] | 1.09 | 1.02 |
+| Rms over all pixels [ADU] (the "read noise" above) | 5.66 | 5.69 |
+| Pixels with more than 2x the median noise | 4.8% | 5.7% |
+| Pixels with more than 3x the median noise | 2.3% | 2.9% |
+| Pixels with more than 5x the median noise (above about 20 ADU, 5 e-) | 0.71% | 1.00% |
+| Noisy pixels (above 5x) in a random sample of 100000 that sit on two levels | 66 of 696 | 112 of 1013 |
+| Single-frame pixels beyond 5 sigma (high / low), a Gaussian would give 7 | 107312 / 80028 | 123916 / 83923 |
+| Mean of 60 frames more than 20 ADU above / below the median | 1011 / 11 | 2679 / 30 |
+
+- The typical pixel has 1.0 to 1.1 e- of noise. The 5.66 ADU (1.4 e-) quoted as read noise elsewhere is the rms over all
+  pixels, and a tail of noisy pixels raises it (inferred from the median being 25% lower).
+- A large share of pixels is noisier than the rest: the pixel noise distribution is not a single value. This is the
+  random telegraph signal known from CMOS sensors (pixels that jump between levels from frame to frame). Of the noisy
+  pixels in the sample, 9% (warm) and 11% (cold) sit cleanly on two levels (separation above 3 sigma, minority level in
+  at least 10% of the frames). The rest are noisy without a clean second level, or switch too fast or too rarely for 60
+  frames (not separated).
+- Cooling does not remove them: the noisy fraction is the same or slightly higher at -5.6 degC (1.0% vs 0.71% above 5x).
+  The median noise falls by 6%. Two temperatures only, so no trend is claimed.
+- Fixed offsets are small: bias subtraction removes only the 1000 to 2700 pixels more than 20 ADU above the median in
+  the 60-frame mean, and only 6 (warm) and 18 (cold) pixels more than 40 ADU. The salt-and-pepper part is temporal, so a master bias
+  or dark does not remove it. Dithering with sigma-clipped or median stacking does (inferred, not tested here).
+- Not checked: the dependence on gain and offset, on exposure time (the frames here are at the minimum exposure), whether
+  the same pixels are noisy from night to night, and a map of their positions. The 60 frames also limit how rarely a
+  pixel can switch and still be seen.
+- The earlier remark that the MAD fit of the dark-current noise is limited by rounding is only part of the story: the
+  heavy tail changes the MAD and the standard deviation differently.
+
 ## Short exposures (measured)
 
 Level of the central 512x512 window vs exposure time with the wall and lamp, sensor at 28 degC, gain 100, offset 50,
@@ -327,7 +365,7 @@ the exposure to "done"; the download adds 0.02 to 0.08 s.
 ## Not done
 
 Flat-field uniformity and dust, the dependence of the gain on temperature, the short-exposure offset at other gains
-and temperatures, the exact gain of the HCG switch (between 75 and 100), and dark current below -10 degC (not reachable much
+and temperatures, the exact gain of the HCG switch (between 75 and 100), a map and the night-to-night stability of the noisy pixels, and dark current below -10 degC (not reachable much
 further in this room).
 
 ## GUI (`asi-gui`)
@@ -357,13 +395,20 @@ uv run python tools/characterize.py flat --gains 25 75 150 250
 uv run python tools/characterize.py short --reference 0.025
 ```
 
+`pixels` (lens capped) takes `--target-temp` or `--no-cooling`, like `gain`:
+
+```bash
+uv run python tools/characterize.py pixels --no-cooling
+uv run python tools/characterize.py pixels --target-temp -5
+```
+
 `short` takes the reference exposure so that the light source gives a good signal; `readout` needs no light.
 
 The `gain` step cools to `--target-temp` (default 20 degC; the run above used `--target-temp 10`), or use `--no-cooling`.
 
 Results go to `characterization/<camera name>/` (JSON lines, a few 512x512 cutouts as FITS, plots and `report.md`).
 The measurements of the ASI2600MM Pro are in `characterization/ZWO_ASI2600MM_Pro/` (`bias.jsonl`, `gain.jsonl`,
-`flat.jsonl`, `short.jsonl`, `readout.jsonl`, `temperature.jsonl`, `templog.jsonl`, `meta.json`). `uv run python tools/characterize.py report` rebuilds
+`flat.jsonl`, `short.jsonl`, `readout.jsonl`, `pixels.jsonl`, `temperature.jsonl`, `templog.jsonl`, `meta.json`). `uv run python tools/characterize.py report` rebuilds
 the plots and `report.md` from them, no camera needed. The FITS cutouts, the plots there and the logs are not kept in
 git. `templog.jsonl` is the temperature log of all runs, including the stopped ones, so it is not a clean series. The
 `gain.jsonl` points are from the cooled run at 10 degC (target 10, sensor 9.6 to 10.0 degC), the dark runs of the

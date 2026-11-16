@@ -22,7 +22,7 @@
   "IsCoolerCam": true,
   "IsUSB3Host": true,
   "IsUSB3Camera": true,
-  "ElecPerADU": 0.043187811970710754,
+  "ElecPerADU": 0.24286292493343353,
   "BitDepth": 16,
   "IsTriggerCam": 0
  },

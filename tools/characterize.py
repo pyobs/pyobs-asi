@@ -8,6 +8,7 @@ Run with the lens capped and without any other program using the camera, e.g.::
     uv run python tools/characterize.py flat   # lens uncapped, pointed at a steady, defocused light source
     uv run python tools/characterize.py short  # same light source
     uv run python tools/characterize.py readout
+    uv run python tools/characterize.py pixels --target-temp -5  # lens capped
     uv run python tools/characterize.py report
 
 Steps (all with high speed mode off, on a central 2048x2048 window):
@@ -23,6 +24,9 @@ Steps (all with high speed mode off, on a central 2048x2048 window):
   the exposure time or a nonlinearity for short exposures.
 * ``readout``: time per frame for the full frame vs. binning and bit depth, with high speed mode off and on, and the
   read noise in both modes.
+* ``pixels``: temporal noise of every pixel from a stack of full-frame bias frames: the share of pixels with
+  excess noise (random telegraph signal, "salt and pepper"), fixed offsets, and how many of the noisy ones flip between
+  two levels. Use ``--target-temp`` to cool first, or ``--no-cooling`` for the warm sensor.
 * ``report``: plots and a Markdown report from the measured data.
 
 Results are appended to JSON lines files in the output folder, so a run can be repeated or resumed.
@@ -72,6 +76,9 @@ SHORT_REFERENCE_S = 0.01  # repeated between the points to follow the light sour
 SHORT_FRAMES = 5
 SHORT_FIT_MIN_S = 0.001  # the exposure offset is fitted from exposures from here on
 READOUT_FRAMES = 5
+PIXEL_FRAMES = 60
+PIXEL_SAMPLE = 100_000  # pixels whose full time series is kept to look for two-level (telegraph) behaviour
+PIXEL_NOISY_FACTOR = 5.0  # a pixel is noisy if its temporal std is this many times the median
 
 
 class CoolerLimit(Exception):
@@ -511,6 +518,122 @@ def run_readout(cam: Camera, out: Output, gain: int, offset: int) -> None:
     cam.cam.set_control_value(asi.ASI_HIGH_SPEED_MODE, 0)
 
 
+def pixel_stats(
+    sample: np.ndarray, s: np.ndarray, s2: np.ndarray, lo: np.ndarray, hi: np.ndarray, first: np.ndarray, n: int
+) -> dict[str, Any]:
+    """Statistics of the temporal noise of every pixel, from sums over ``n`` frames.
+
+    ``sample`` has the time series (frames x pixels) of a random subset of pixels, ``first`` is the first frame.
+    """
+    mean = s / n
+    std = np.sqrt(np.maximum((s2 - n * mean**2) / (n - 1), 0.0))
+    level, med_std = float(np.median(mean)), float(np.median(std))
+    record: dict[str, Any] = {
+        "frames": n,
+        "level": level,
+        "std_median": med_std,
+        "std_mean": float(std.mean()),
+        "std_rms": float(np.sqrt((std**2).mean())),
+        "std_percentiles": {str(q): float(v) for q, v in zip((1, 50, 99, 99.9), np.percentile(std, (1, 50, 99, 99.9)))},
+        "noisy_frac": {str(k): float((std > k * med_std).mean()) for k in (1.25, 1.5, 2, 3, 5)},
+        "offset_high": {str(a): int((mean > level + a).sum()) for a in (10, 20, 40)},
+        "offset_low": {str(a): int((mean < level - a).sum()) for a in (10, 20, 40)},
+    }
+    # tails of a single frame, with a robust sigma (a Gaussian would give a few pixels at 5 sigma)
+    sigma = 1.4826 * float(np.median(np.abs(first - np.median(first))))
+    record["single_frame_tails"] = {
+        str(k): {
+            "high": int((first > np.median(first) + k * sigma).sum()),
+            "low": int((first < np.median(first) - k * sigma).sum()),
+        }
+        for k in (5, 8, 20)
+    }
+    # noisy pixels of the sample: do they sit on two levels?
+    sample_std = sample.std(axis=0, ddof=1)
+    noisy = sample[:, sample_std > PIXEL_NOISY_FACTOR * med_std].astype(np.float64)
+    two_level = 0
+    for series in noisy.T:
+        split = (series.min() + series.max()) / 2
+        up, down = series[series > split], series[series <= split]
+        share = min(len(up), len(down)) / len(series)
+        if share < 0.1 or len(up) < 2 or len(down) < 2:
+            continue
+        pooled = math.sqrt((up.var(ddof=1) * (len(up) - 1) + down.var(ddof=1) * (len(down) - 1)) / (len(series) - 2))
+        if pooled > 0 and (up.mean() - down.mean()) / pooled > 3:
+            two_level += 1
+    record["sample_noisy"] = int(noisy.shape[1])
+    record["sample_noisy_two_level"] = two_level
+    record["range_over_45adu"] = int(((hi.astype(np.int64) - lo) > 45).sum())
+    return record
+
+
+def run_pixels(
+    cam: Camera, out: Output, gain: int, offset: int, target_temp: int | None, frames: int = PIXEL_FRAMES
+) -> None:
+    ambient = round(cam.temperature())
+    try:
+        if target_temp is None:
+            if cam.cooler_on():
+                print("Switching the cooler off and waiting for a stable sensor temperature.", flush=True)
+                cam.set_cooler(False)
+            wait_stable(cam, out, None, "warm")
+        else:
+            print(f"Cooling to {target_temp} degC ...", flush=True)
+            ramp_to(cam, out, target_temp)
+            wait_stable(cam, out, target_temp, f"stabilize {target_temp}")
+
+        c = cam.cam
+        width, height = cam.info["MaxWidth"], cam.info["MaxHeight"]
+        c.set_control_value(asi.ASI_GAIN, gain)
+        c.set_control_value(asi.ASI_OFFSET, offset)
+        c.set_control_value(asi.ASI_EXPOSURE, cam.min_exposure_us)
+        c.set_roi(0, 0, width, height, bins=1, image_type=asi.ASI_IMG_RAW16)
+        rng = np.random.default_rng(1)
+        index = rng.choice(width * height, PIXEL_SAMPLE, replace=False)
+        s, s2 = np.zeros((height, width)), np.zeros((height, width))
+        lo, hi = np.full((height, width), 65535, np.uint16), np.zeros((height, width), np.uint16)
+        sample, first = [], None
+        temp0 = cam.temperature()
+        for i in range(frames + 1):  # the first frame after a setting change is discarded
+            c.start_exposure()
+            while c.get_exposure_status() == asi.ASI_EXP_WORKING:
+                time.sleep(0.001)
+            if c.get_exposure_status() != asi.ASI_EXP_SUCCESS:
+                raise RuntimeError("Exposure failed.")
+            data = np.frombuffer(c.get_data_after_exposure(), dtype=np.uint16).reshape(height, width)
+            if i == 0:
+                continue
+            x = data.astype(np.float64)
+            s += x
+            s2 += x * x
+            lo, hi = np.minimum(lo, data), np.maximum(hi, data)
+            sample.append(data.reshape(-1)[index])
+            if first is None:
+                first = x
+        assert first is not None
+        record: dict[str, Any] = {
+            "time": time.time(),
+            "target": target_temp,
+            "temp": cam.temperature(),
+            "temp_start": temp0,
+            "power": cam.power(),
+            "gain": gain,
+            "offset": offset,
+            **pixel_stats(np.array(sample), s, s2, lo, hi, first, frames),
+        }
+        out.write("pixels", record)
+        print(
+            f"T={record['temp']:.1f} degC: median pixel noise {record['std_median']:.2f} ADU, "
+            f"rms {record['std_rms']:.2f}, "
+            f"noisy (>{PIXEL_NOISY_FACTOR:.0f}x): {record['noisy_frac']['5']:.2e}, two-level in sample: "
+            f"{record['sample_noisy_two_level']} of {record['sample_noisy']}",
+            flush=True,
+        )
+    finally:
+        if target_temp is not None:
+            warm_up(cam, out, ambient)
+
+
 def fit_gain(records: list[dict[str, Any]], gain: int, weighted: bool = False) -> dict[str, float] | None:
     """Fit variance = read_noise^2 + g * signal. The slope g is ADU per electron.
 
@@ -747,7 +870,7 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("step", choices=["bias", "gain", "temperature", "flat", "short", "readout", "report"])
+    parser.add_argument("step", choices=["bias", "gain", "temperature", "flat", "short", "readout", "pixels", "report"])
     parser.add_argument("--sdk", default="sdk/x64/libASICamera2.so")
     parser.add_argument("--out", default="characterization")
     parser.add_argument("--gains", type=int, nargs="+", help="gains for the bias or gain step")
@@ -792,6 +915,9 @@ def main() -> None:
             run_short(cam, out, args.gain, args.offset, args.reference)
         elif args.step == "readout":
             run_readout(cam, out, args.gain, args.offset)
+        elif args.step == "pixels":
+            target = None if args.no_cooling else args.target_temp
+            run_pixels(cam, out, args.gain, args.offset, target)
         elif args.step == "temperature":
             run_temperature(cam, out, args.temperatures, args.gain, args.offset)
     finally:

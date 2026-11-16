@@ -68,6 +68,10 @@ setpoint in degrees Celsius:
     camera: ZWO ASI071MC Pro
     setpoint: -20
 
+The setpoint is changed in steps (default 2 degC/min when cooling down, 1 degC/min when warming up, and the
+cooler is switched off only after warming up). Use `cooling_rate_cool`, `cooling_rate_warm` and `cooling_ramp_step`
+to change this, see *CoolingRampMixin* in *pyobs-core*.
+
 
 GUI
 ---

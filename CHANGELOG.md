@@ -9,6 +9,8 @@ Entries for releases before this file existed were generated from commit subject
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-11-17
+
 - Fixed the window of `AsiCamera` with binning above 1: the start of the window was given to the SDK in unbinned
   pixels, but the SDK wants it in binned pixels, and the width and height were not rounded to the multiples of 8 and 2
   the SDK needs. `AsiCamera` and `AsiVideo` now share the conversion, `XORGSUBF`/`YORGSUBF` and the BIASSEC/TRIMSEC
@@ -20,14 +22,29 @@ Entries for releases before this file existed were generated from commit subject
 - The GUI warm-up no longer switches the cooler off early: it also looks at the cooler power, since the sensor lags
   behind the setpoint (same fix as pyobs-core 2.27.1 for the module).
 - The close timeout of `AsiCoolCamera` is now estimated by pyobs-core's `CoolingRampMixin` (needs pyobs-core 2.28.0).
+
+## [2.3.0] - 2026-11-16
+
 - Closing the camera switches the ASI cooler off at once, which warms the sensor abruptly. `AsiCoolCamera` now warms
   up first when it is closed (`cooling_warmup_on_close`, default true; `cooling_close_timeout`, default 300 s, after
   which the camera is closed anyway). The GUI asks "Warm up first, close now or cancel" when closed with the cooler on.
+
+## [2.2.0] - 2026-11-16
+
 - `AsiCoolCamera` ramps the cooling setpoint with pyobs-core's `CoolingRampMixin` (needs pyobs-core 2.24.0).
   `set_cooling` returns at once and the setpoint is stepped in the background, including warming up before the
   cooler is switched off. Rates and step are set with `cooling_rate_warm` (default 1 degC/min),
   `cooling_rate_cool` (default 2 degC/min) and `cooling_ramp_step`. Before, the setpoint was set in one step.
 - The GUI ramps the cooling setpoint the same way and asks before closing while a ramp is running.
+
+## [2.1.3] - 2026-10-04
+
+- Put the email on the copyright line of `LICENSE`, so that GitHub detects the MIT license.
+
+## [2.1.2] - 2026-10-04
+
+- Added `CONTRIBUTING.md` and this changelog, and the readme and project URLs to the package metadata.
+- Dependency updates.
 
 ## [2.1.1] - 2026-10-04
 

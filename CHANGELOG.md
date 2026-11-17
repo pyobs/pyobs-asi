@@ -9,6 +9,9 @@ Entries for releases before this file existed were generated from commit subject
 
 ## [Unreleased]
 
+- The GUI warm-up no longer switches the cooler off early: it also looks at the cooler power, since the sensor lags
+  behind the setpoint (same fix as pyobs-core 2.27.1 for the module).
+- The close timeout of `AsiCoolCamera` is now estimated by pyobs-core's `CoolingRampMixin` (needs pyobs-core 2.28.0).
 - Closing the camera switches the ASI cooler off at once, which warms the sensor abruptly. `AsiCoolCamera` now warms
   up first when it is closed (`cooling_warmup_on_close`, default true; `cooling_close_timeout`, default 300 s, after
   which the camera is closed anyway). The GUI asks "Warm up first, close now or cancel" when closed with the cooler on.

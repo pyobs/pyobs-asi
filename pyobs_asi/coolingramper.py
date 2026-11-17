@@ -57,7 +57,10 @@ class SdkCoolingRamper:
             current = self.ramp.round(temperature)
             self._write(True, current)
 
-        step = self.ramp.next_step(current, enabled, set_point, temperature)
+        # while warming up, the sensor lags behind the setpoint, so the ramp also needs the cooler power to see
+        # whether the cooler is really idle before it is switched off
+        power = int(self.camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0]) if not enabled else None
+        step = self.ramp.next_step(current, enabled, set_point, temperature, power)
         if step.write:
             self._write(step.enabled, step.setpoint)
         return None if step.done else step.delay

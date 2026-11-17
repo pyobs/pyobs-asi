@@ -5,9 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import numpy as np
+import pytest
 import zwoasi as asi  # type: ignore
 
-from pyobs_asi.gui import make_header
+try:
+    from pyobs_asi.gui import make_header
+except ImportError as e:  # no Qt extras, or Qt cannot load its system libraries (e.g. libEGL on CI runners)
+    pytest.skip(f"GUI cannot be imported: {e}", allow_module_level=True)
 
 
 class FakeCamera:

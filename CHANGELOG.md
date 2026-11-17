@@ -9,8 +9,14 @@ Entries for releases before this file existed were generated from commit subject
 
 ## [Unreleased]
 
-- The GUI writes a FITS header into the frames it saves: `DATE-OBS`, `EXPTIME`, `GAIN`, `OFFSET`, `CCD-TEMP`,
-  `SET-TEMP`, `COOLER`, `COOLPOW`, binning, window, pixel size, `IMAGETYP` and `INSTRUME`. Before, the header was empty.
+- Fixed the window of `AsiCamera` with binning above 1: the start of the window was given to the SDK in unbinned
+  pixels, but the SDK wants it in binned pixels, and the width and height were not rounded to the multiples of 8 and 2
+  the SDK needs. `AsiCamera` and `AsiVideo` now share the conversion, `XORGSUBF`/`YORGSUBF` and the BIASSEC/TRIMSEC
+  cards describe the window the frame really covers, and the window read at open is converted to unbinned pixels.
+- The GUI writes a FITS header into the frames it saves. It was empty. The header cards are the same as in the module
+  (`DATE-OBS`, `EXPTIME`, `INSTRUME`, binning, window origin, `DET-PIXL`, `GAIN`, `OFFSET`, `DET-GAIN`, `DET-TEMP`,
+  `DET-TSET`, `DET-COOL`, `DATAMIN`, `DATAMAX`, `DATAMEAN`). `AsiCamera`, `AsiCoolCamera`, `AsiVideo` and the GUI
+  build them with `make_frame_header` from pyobs-core (needs pyobs-core 2.28.0).
 - The GUI warm-up no longer switches the cooler off early: it also looks at the cooler power, since the sensor lags
   behind the setpoint (same fix as pyobs-core 2.27.1 for the module).
 - The close timeout of `AsiCoolCamera` is now estimated by pyobs-core's `CoolingRampMixin` (needs pyobs-core 2.28.0).

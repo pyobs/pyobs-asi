@@ -8,7 +8,9 @@ import numpy as np
 import qasync  # type: ignore
 import zwoasi as asi  # type: ignore
 from astropy.io import fits
+from numpy.typing import NDArray
 from pyobs.utils.enums import ImageFormat
+from pyobs.utils.frameheader import FrameSettings, make_frame_header
 from pyobs.utils.gui.camera import (
     BinningWidget,
     CoolingWidget,
@@ -24,6 +26,7 @@ from pyobs.utils.parallel import event_wait
 from PySide6 import QtCore, QtWidgets  # type: ignore[import-untyped]
 
 from .coolingramper import SdkCoolingRamper
+from .presets import PRESETS, detector_gain
 
 # the first entry is the default in the GUI
 FORMATS = {
@@ -39,7 +42,7 @@ def make_header(
     exposure_time: float,
     window: tuple[int, int, int, int],
     binning: int,
-    image_type: int,
+    data: NDArray[Any],
 ) -> fits.Header:
     """Builds the FITS header for a frame, reading gain, offset and cooling from the camera (blocking).
 
@@ -48,39 +51,36 @@ def make_header(
         camera_info: Camera properties as returned by the SDK.
         date_obs: UTC time the exposure was started.
         exposure_time: Exposure time in seconds.
-        window: Left, top, width and height of the window in binned pixels.
+        window: Left, top, width and height of the window in binned pixels, as the SDK takes them.
         binning: Binning factor.
-        image_type: SDK image type of the frame.
+        data: The frame.
 
     Returns:
         The header.
     """
     left, top, width, height = window
-    header = fits.Header()
-    header["DATE-OBS"] = (date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f"), "UTC at the start of the exposure")
-    header["EXPTIME"] = (exposure_time, "Exposure time [s]")
-    header["INSTRUME"] = (camera_info.get("Name", ""), "Camera")
-    header["IMAGETYP"] = ("RAW8" if image_type == asi.ASI_IMG_RAW8 else "RAW16", "SDK image format")
-    header["XBINNING"] = (binning, "Binning in x")
-    header["YBINNING"] = (binning, "Binning in y")
-    header["XORGSUBF"] = (left * binning, "Window start in x [unbinned pixels]")
-    header["YORGSUBF"] = (top * binning, "Window start in y [unbinned pixels]")
+    gain = camera.get_control_value(asi.ASI_GAIN)[0]
     pixel_size = camera_info.get("PixelSize")
-    if pixel_size is not None:
-        header["XPIXSZ"] = (pixel_size * binning, "Pixel size in x [um], binned")
-        header["YPIXSZ"] = (pixel_size * binning, "Pixel size in y [um], binned")
-    header["GAIN"] = (camera.get_control_value(asi.ASI_GAIN)[0], "Gain setting")
-    header["OFFSET"] = (camera.get_control_value(asi.ASI_OFFSET)[0], "Offset setting [ADU]")
-    # the SDK reports temperatures in units of 0.1 degC
-    header["CCD-TEMP"] = (
-        camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.0,
-        "Sensor temperature after the exposure [degC]",
+    cooled = bool(camera_info.get("IsCoolerCam"))
+    return make_frame_header(
+        FrameSettings(
+            date_obs=date_obs,
+            exposure_time=exposure_time,
+            instrument=camera_info.get("Name"),
+            binning=(binning, binning),
+            # the SDK takes the window start in binned pixels, FITS wants unbinned ones
+            window=(left * binning, top * binning, width * binning, height * binning),
+            pixel_size=None if pixel_size is None else pixel_size / 1000.0,
+            gain=gain,
+            e_per_adu=detector_gain(PRESETS.get(camera_info.get("Name", "")), camera_info, gain),
+            offset=camera.get_control_value(asi.ASI_OFFSET)[0],
+            # the SDK reports temperatures in units of 0.1 degC
+            temperature=camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.0,
+            setpoint=float(camera.get_control_value(asi.ASI_TARGET_TEMP)[0]) if cooled else None,
+            cooler_power=camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0] if cooled else None,
+            data=data,
+        )
     )
-    if camera_info.get("IsCoolerCam"):
-        header["SET-TEMP"] = (float(camera.get_control_value(asi.ASI_TARGET_TEMP)[0]), "Cooler setpoint [degC]")
-        header["COOLER"] = (bool(camera.get_control_value(asi.ASI_COOLER_ON)[0]), "Cooler on")
-        header["COOLPOW"] = (camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0], "Cooler power [%]")
-    return header
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -276,7 +276,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 exposure_us / 1e6,
                 (left, top, width, height),
                 binning,
-                image_type,
+                data,
             )
             image = fits.PrimaryHDU(data, header=header)
             self.data_display_widget.set_data(image)

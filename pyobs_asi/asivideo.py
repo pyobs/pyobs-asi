@@ -25,7 +25,9 @@ from pyobs.interfaces import (
 )
 from pyobs.modules.camera import BaseVideo, Frame
 from pyobs.utils.enums import ImageFormat, ImageType
+from pyobs.utils.frameheader import FrameSettings, make_frame_header
 
+from .asicamera import binned_roi, unbinned_window
 from .blocking import SDK_CALL_TIMEOUT, BlockingSdkMixin
 from .presets import PRESETS, detector_gain
 
@@ -200,17 +202,7 @@ class AsiVideo(BlockingSdkMixin, BaseVideo, IExposureTime, IGain, IWindow, IBinn
         The window is given in unbinned pixels. The SDK wants the ROI in binned pixels, with a width
         that's a multiple of 8 and a height that's a multiple of 2, so it is shrunk to fit.
         """
-        bins = self._binning
-        width = self._window[2] // bins // 8 * 8
-        height = self._window[3] // bins // 2 * 2
-        camera.set_roi(
-            self._window[0] // bins,
-            self._window[1] // bins,
-            width,
-            height,
-            bins,
-            VIDEO_FORMATS[self._image_format],
-        )
+        camera.set_roi(*binned_roi(self._window, self._binning), self._binning, VIDEO_FORMATS[self._image_format])
         camera.set_control_value(asi.ASI_EXPOSURE, int(self._exposure_time * 1e6))
         camera.set_control_value(asi.ASI_GAIN, int(self._gain))
         camera.set_control_value(asi.ASI_OFFSET, int(self._gain_offset))
@@ -331,18 +323,20 @@ class AsiVideo(BlockingSdkMixin, BaseVideo, IExposureTime, IGain, IWindow, IBinn
 
     async def _finish_image(self, image: Image, broadcast: bool, image_type: ImageType) -> tuple[Image, str]:
         """Add camera identity and settings headers, then finish up as usual."""
-        image.header["INSTRUME"] = (self._camera_name, "Name of instrument")
-        image.header["XBINNING"] = image.header["DET-BIN1"] = (self._binning, "Binning factor used on X axis")
-        image.header["YBINNING"] = image.header["DET-BIN2"] = (self._binning, "Binning factor used on Y axis")
-        image.header["XORGSUBF"] = (self._window[0], "Subframe origin on X axis")
-        image.header["YORGSUBF"] = (self._window[1], "Subframe origin on Y axis")
-        image.header["GAIN"] = (self._gain, "Gain used for exposure")
-        image.header["OFFSET"] = (self._gain_offset, "Black-level offset used for exposure")
-        if "PixelSize" in self._camera_info:
-            image.header["DET-PIXL"] = (self._camera_info["PixelSize"] / 1000.0, "Size of detector pixels [mm]")
-        e_per_adu = detector_gain(PRESETS.get(self._camera_name), self._camera_info, self._gain)
-        if e_per_adu is not None:
-            image.header["DET-GAIN"] = (e_per_adu, "Detector gain [e-/ADU]")
+        pixel_size = self._camera_info.get("PixelSize")
+        image.header.update(
+            make_frame_header(
+                FrameSettings(
+                    instrument=self._camera_name,
+                    binning=(self._binning, self._binning),
+                    window=unbinned_window(binned_roi(self._window, self._binning), self._binning),
+                    pixel_size=None if pixel_size is None else pixel_size / 1000.0,
+                    gain=self._gain,
+                    e_per_adu=detector_gain(PRESETS.get(self._camera_name), self._camera_info, self._gain),
+                    offset=self._gain_offset,
+                )
+            )
+        )
         if self._camera_info.get("IsColorCam"):
             image.header["BAYERPAT"] = image.header["COLORTYP"] = ("GBRG", "Bayer pattern for colors")
         return await super()._finish_image(image, broadcast, image_type)

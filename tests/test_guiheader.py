@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import numpy as np
 import zwoasi as asi  # type: ignore
 
 from pyobs_asi.gui import make_header
@@ -25,24 +26,26 @@ class FakeCamera:
 
 INFO = {"Name": "ZWO ASI2600MM Pro", "PixelSize": 3.76, "IsCoolerCam": True}
 DATE = datetime(2026, 11, 17, 10, 0, 0, 500000, tzinfo=UTC)
+DATA = np.array([[490, 500], [510, 520]], dtype=np.uint16)
 
 
-def test_header_has_settings_and_cooling() -> None:
-    h = make_header(FakeCamera(), INFO, DATE, 300.0, (0, 0, 6248, 4176), 1, asi.ASI_IMG_RAW16)  # type: ignore[arg-type]
+def test_header_has_the_module_keys() -> None:
+    h = make_header(FakeCamera(), INFO, DATE, 300.0, (0, 0, 6248, 4176), 1, DATA)  # type: ignore[arg-type]
     assert h["DATE-OBS"] == "2026-11-17T10:00:00.500000"
     assert h["EXPTIME"] == 300.0
     assert h["GAIN"] == 100 and h["OFFSET"] == 50
-    assert h["CCD-TEMP"] == -9.8 and h["SET-TEMP"] == -10.0
-    assert h["COOLER"] is True and h["COOLPOW"] == 12
-    assert h["INSTRUME"] == "ZWO ASI2600MM Pro" and h["IMAGETYP"] == "RAW16"
+    assert h["DET-GAIN"] == 0.783 * 10 ** (-100 / 200)
+    assert h["DET-TEMP"] == -9.8 and h["DET-TSET"] == -10.0 and h["DET-COOL"] == 12
+    assert h["INSTRUME"] == "ZWO ASI2600MM Pro"
+    assert h["DET-PIXL"] == 0.00376
+    assert (h["DATAMIN"], h["DATAMAX"], h["DATAMEAN"]) == (490.0, 520.0, 505.0)
 
 
 def test_header_binning_and_window_in_unbinned_pixels() -> None:
-    h = make_header(FakeCamera(), INFO, DATE, 1.0, (10, 20, 100, 100), 2, asi.ASI_IMG_RAW8)  # type: ignore[arg-type]
-    assert h["XBINNING"] == 2 and h["XORGSUBF"] == 20 and h["YORGSUBF"] == 40
-    assert h["XPIXSZ"] == 7.52 and h["IMAGETYP"] == "RAW8"
+    h = make_header(FakeCamera(), INFO, DATE, 1.0, (10, 20, 100, 100), 2, DATA)  # type: ignore[arg-type]
+    assert h["XBINNING"] == h["DET-BIN1"] == 2 and h["XORGSUBF"] == 20 and h["YORGSUBF"] == 40
 
 
 def test_header_without_cooler_has_no_cooling_cards() -> None:
-    h = make_header(FakeCamera(), {"Name": "x"}, DATE, 1.0, (0, 0, 8, 2), 1, asi.ASI_IMG_RAW16)  # type: ignore[arg-type]
-    assert "SET-TEMP" not in h and "COOLPOW" not in h and "XPIXSZ" not in h
+    h = make_header(FakeCamera(), {"Name": "x"}, DATE, 1.0, (0, 0, 8, 2), 1, DATA)  # type: ignore[arg-type]
+    assert "DET-TSET" not in h and "DET-COOL" not in h and "DET-PIXL" not in h

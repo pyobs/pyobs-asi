@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import traceback
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
@@ -31,11 +32,63 @@ FORMATS = {
 }
 
 
+def make_header(
+    camera: asi.Camera,
+    camera_info: dict[str, Any],
+    date_obs: datetime,
+    exposure_time: float,
+    window: tuple[int, int, int, int],
+    binning: int,
+    image_type: int,
+) -> fits.Header:
+    """Builds the FITS header for a frame, reading gain, offset and cooling from the camera (blocking).
+
+    Args:
+        camera: Camera to read the current settings from.
+        camera_info: Camera properties as returned by the SDK.
+        date_obs: UTC time the exposure was started.
+        exposure_time: Exposure time in seconds.
+        window: Left, top, width and height of the window in binned pixels.
+        binning: Binning factor.
+        image_type: SDK image type of the frame.
+
+    Returns:
+        The header.
+    """
+    left, top, width, height = window
+    header = fits.Header()
+    header["DATE-OBS"] = (date_obs.strftime("%Y-%m-%dT%H:%M:%S.%f"), "UTC at the start of the exposure")
+    header["EXPTIME"] = (exposure_time, "Exposure time [s]")
+    header["INSTRUME"] = (camera_info.get("Name", ""), "Camera")
+    header["IMAGETYP"] = ("RAW8" if image_type == asi.ASI_IMG_RAW8 else "RAW16", "SDK image format")
+    header["XBINNING"] = (binning, "Binning in x")
+    header["YBINNING"] = (binning, "Binning in y")
+    header["XORGSUBF"] = (left * binning, "Window start in x [unbinned pixels]")
+    header["YORGSUBF"] = (top * binning, "Window start in y [unbinned pixels]")
+    pixel_size = camera_info.get("PixelSize")
+    if pixel_size is not None:
+        header["XPIXSZ"] = (pixel_size * binning, "Pixel size in x [um], binned")
+        header["YPIXSZ"] = (pixel_size * binning, "Pixel size in y [um], binned")
+    header["GAIN"] = (camera.get_control_value(asi.ASI_GAIN)[0], "Gain setting")
+    header["OFFSET"] = (camera.get_control_value(asi.ASI_OFFSET)[0], "Offset setting [ADU]")
+    # the SDK reports temperatures in units of 0.1 degC
+    header["CCD-TEMP"] = (
+        camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.0,
+        "Sensor temperature after the exposure [degC]",
+    )
+    if camera_info.get("IsCoolerCam"):
+        header["SET-TEMP"] = (float(camera.get_control_value(asi.ASI_TARGET_TEMP)[0]), "Cooler setpoint [degC]")
+        header["COOLER"] = (bool(camera.get_control_value(asi.ASI_COOLER_ON)[0]), "Cooler on")
+        header["COOLPOW"] = (camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0], "Cooler power [%]")
+    return header
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, camera: asi.Camera, camera_info: dict[str, Any]) -> None:
         super().__init__()
 
         self.camera = camera
+        self.camera_info = camera_info
         # exposure times below the SDK minimum give garbage frames
         controls = camera.get_controls()
         self.min_exposure_us = int(controls["Exposure"]["MinValue"])
@@ -187,6 +240,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.camera.set_control_value(asi.ASI_EXPOSURE, exposure_us)
             self.camera.start_exposure()
 
+        date_obs = datetime.now(UTC)
         await loop.run_in_executor(None, _start)
 
         def _get_status() -> int:
@@ -213,7 +267,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 print("Frame contains only zeros, discarding it.")
                 return
 
-            image = fits.PrimaryHDU(data)
+            header = await loop.run_in_executor(
+                None,
+                make_header,
+                self.camera,
+                self.camera_info,
+                date_obs,
+                exposure_us / 1e6,
+                (left, top, width, height),
+                binning,
+                image_type,
+            )
+            image = fits.PrimaryHDU(data, header=header)
             self.data_display_widget.set_data(image)
 
     @qasync.asyncSlot()  # type: ignore

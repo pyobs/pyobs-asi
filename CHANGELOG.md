@@ -9,6 +9,8 @@ Entries for releases before this file existed were generated from commit subject
 
 ## [Unreleased]
 
+- The GUI writes a FITS header into the frames it saves: `DATE-OBS`, `EXPTIME`, `GAIN`, `OFFSET`, `CCD-TEMP`,
+  `SET-TEMP`, `COOLER`, `COOLPOW`, binning, window, pixel size, `IMAGETYP` and `INSTRUME`. Before, the header was empty.
 - The GUI warm-up no longer switches the cooler off early: it also looks at the cooler power, since the sensor lags
   behind the setpoint (same fix as pyobs-core 2.27.1 for the module).
 - The close timeout of `AsiCoolCamera` is now estimated by pyobs-core's `CoolingRampMixin` (needs pyobs-core 2.28.0).

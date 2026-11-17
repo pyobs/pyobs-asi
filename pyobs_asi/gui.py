@@ -1,13 +1,16 @@
 import asyncio
 import sys
 import traceback
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
 import qasync  # type: ignore
 import zwoasi as asi  # type: ignore
 from astropy.io import fits
+from numpy.typing import NDArray
 from pyobs.utils.enums import ImageFormat
+from pyobs.utils.frameheader import FrameSettings, make_frame_header
 from pyobs.utils.gui.camera import (
     BinningWidget,
     CoolingWidget,
@@ -23,6 +26,7 @@ from pyobs.utils.parallel import event_wait
 from PySide6 import QtCore, QtWidgets  # type: ignore[import-untyped]
 
 from .coolingramper import SdkCoolingRamper
+from .presets import PRESETS, detector_gain
 
 # the first entry is the default in the GUI
 FORMATS = {
@@ -31,11 +35,60 @@ FORMATS = {
 }
 
 
+def make_header(
+    camera: asi.Camera,
+    camera_info: dict[str, Any],
+    date_obs: datetime,
+    exposure_time: float,
+    window: tuple[int, int, int, int],
+    binning: int,
+    data: NDArray[Any],
+) -> fits.Header:
+    """Builds the FITS header for a frame, reading gain, offset and cooling from the camera (blocking).
+
+    Args:
+        camera: Camera to read the current settings from.
+        camera_info: Camera properties as returned by the SDK.
+        date_obs: UTC time the exposure was started.
+        exposure_time: Exposure time in seconds.
+        window: Left, top, width and height of the window in binned pixels, as the SDK takes them.
+        binning: Binning factor.
+        data: The frame.
+
+    Returns:
+        The header.
+    """
+    left, top, width, height = window
+    gain = camera.get_control_value(asi.ASI_GAIN)[0]
+    pixel_size = camera_info.get("PixelSize")
+    cooled = bool(camera_info.get("IsCoolerCam"))
+    return make_frame_header(
+        FrameSettings(
+            date_obs=date_obs,
+            exposure_time=exposure_time,
+            instrument=camera_info.get("Name"),
+            binning=(binning, binning),
+            # the SDK takes the window start in binned pixels, FITS wants unbinned ones
+            window=(left * binning, top * binning, width * binning, height * binning),
+            pixel_size=None if pixel_size is None else pixel_size / 1000.0,
+            gain=gain,
+            e_per_adu=detector_gain(PRESETS.get(camera_info.get("Name", "")), camera_info, gain),
+            offset=camera.get_control_value(asi.ASI_OFFSET)[0],
+            # the SDK reports temperatures in units of 0.1 degC
+            temperature=camera.get_control_value(asi.ASI_TEMPERATURE)[0] / 10.0,
+            setpoint=float(camera.get_control_value(asi.ASI_TARGET_TEMP)[0]) if cooled else None,
+            cooler_power=camera.get_control_value(asi.ASI_COOLER_POWER_PERC)[0] if cooled else None,
+            data=data,
+        )
+    )
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, camera: asi.Camera, camera_info: dict[str, Any]) -> None:
         super().__init__()
 
         self.camera = camera
+        self.camera_info = camera_info
         # exposure times below the SDK minimum give garbage frames
         controls = camera.get_controls()
         self.min_exposure_us = int(controls["Exposure"]["MinValue"])
@@ -187,6 +240,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.camera.set_control_value(asi.ASI_EXPOSURE, exposure_us)
             self.camera.start_exposure()
 
+        date_obs = datetime.now(UTC)
         await loop.run_in_executor(None, _start)
 
         def _get_status() -> int:
@@ -213,7 +267,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 print("Frame contains only zeros, discarding it.")
                 return
 
-            image = fits.PrimaryHDU(data)
+            header = await loop.run_in_executor(
+                None,
+                make_header,
+                self.camera,
+                self.camera_info,
+                date_obs,
+                exposure_us / 1e6,
+                (left, top, width, height),
+                binning,
+                data,
+            )
+            image = fits.PrimaryHDU(data, header=header)
             self.data_display_widget.set_data(image)
 
     @qasync.asyncSlot()  # type: ignore

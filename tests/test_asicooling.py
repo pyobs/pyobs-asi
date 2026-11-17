@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock
 import pytest
 import zwoasi as asi  # type: ignore
 from pyobs.interfaces import ICooling
-from pyobs.mixins import CoolingRampMixin
 
 from pyobs_asi import AsiCoolCamera
 from pyobs_asi.coolingramper import SdkCoolingRamper
@@ -21,6 +20,7 @@ class FakeCamera:
         self.target = target
         self.sensor = sensor
         self.offset = offset
+        self.power = 30
         self.writes: list[tuple[int, int]] = []
 
     def get_control_value(self, control: int) -> tuple[int, bool]:
@@ -31,7 +31,7 @@ class FakeCamera:
         if control == asi.ASI_TEMPERATURE:
             return int(round(self.sensor * 10)), False
         if control == asi.ASI_COOLER_POWER_PERC:
-            return 30, False
+            return self.power, False
         raise AssertionError(control)
 
     def set_control_value(self, control: int, value: int) -> None:
@@ -71,6 +71,20 @@ def test_ramper_warms_up_before_switching_off() -> None:
     assert camera.cooler_on is False
     # setpoint was raised step by step first
     assert [v for c, v in camera.writes if c == asi.ASI_TARGET_TEMP][:3] == [-19, -18, -17]
+
+
+def test_ramper_keeps_warming_while_the_sensor_lags_and_the_cooler_works() -> None:
+    # sensor 5 degC below the setpoint, but the cooler still gives power: switching off now would warm up abruptly
+    camera = FakeCamera(sensor=-25.0, cooler_on=True, target=-20, offset=5.0)
+    assert SdkCoolingRamper(camera).step(False, 0) is not None
+    assert camera.cooler_on is True
+
+
+def test_ramper_switches_off_when_the_cooler_is_idle() -> None:
+    camera = FakeCamera(sensor=-25.0, cooler_on=True, target=-20, offset=5.0)
+    camera.power = 0
+    assert SdkCoolingRamper(camera).step(False, 0) is None
+    assert camera.cooler_on is False
 
 
 def test_ramper_does_nothing_when_already_off() -> None:
@@ -139,9 +153,8 @@ def test_warmup_minutes_is_none_when_cooler_is_off() -> None:
 def test_module_warms_up_on_close_by_default() -> None:
     module = AsiCoolCamera(camera="test")
     assert module._cooling_warmup_on_close is True
-    # without a given timeout it is estimated from the setpoint when closing, 300 s is the fallback
-    assert module._auto_close_timeout is True
-    assert module._cooling_close_timeout == 300.0
+    # without a given timeout the core mixin estimates it from the setpoint when closing
+    assert module._cooling_close_timeout is None
 
 
 def test_module_warm_up_defaults() -> None:
@@ -159,66 +172,7 @@ def test_module_warm_up_can_be_configured() -> None:
 def test_module_warmup_on_close_can_be_disabled() -> None:
     module = AsiCoolCamera(camera="test", cooling_warmup_on_close=False, cooling_close_timeout=10.0)
     assert module._cooling_warmup_on_close is False
-    assert module._auto_close_timeout is False
     assert module._cooling_close_timeout == 10.0
-
-
-@pytest.mark.asyncio
-async def test_close_timeout_follows_the_setpoint() -> None:
-    module = AsiCoolCamera(camera="test")
-    module._get_cooling_status = AsyncMock(return_value=(True, -20.0, 80.0))  # type: ignore[method-assign]
-
-    # -20 -> 15 degC at 2 degC/min = 1050 s, plus 20% and 60 s
-    assert await module._estimated_close_timeout() == pytest.approx(1050 * 1.2 + 60)
-
-
-@pytest.mark.asyncio
-async def test_close_timeout_is_short_when_the_setpoint_is_near_the_off_temperature() -> None:
-    module = AsiCoolCamera(camera="test")
-    module._get_cooling_status = AsyncMock(return_value=(True, 14.0, 5.0))  # type: ignore[method-assign]
-    assert await module._estimated_close_timeout() == pytest.approx(30 * 1.2 + 60)
-
-
-@pytest.mark.asyncio
-async def test_close_timeout_falls_back_when_the_cooler_is_off_or_unreadable() -> None:
-    module = AsiCoolCamera(camera="test")
-    module._get_cooling_status = AsyncMock(return_value=(False, 8.0, 0.0))  # type: ignore[method-assign]
-    assert await module._estimated_close_timeout() == 300.0
-
-    module._get_cooling_status = AsyncMock(side_effect=ValueError("No camera initialised."))  # type: ignore[method-assign]
-    assert await module._estimated_close_timeout() == 300.0
-
-
-@pytest.mark.asyncio
-async def test_close_sets_the_estimated_timeout_before_warming_up(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[float] = []
-
-    async def fake_close(self: CoolingRampMixin) -> None:
-        seen.append(self._cooling_close_timeout)
-
-    monkeypatch.setattr(CoolingRampMixin, "close", fake_close)
-    module = AsiCoolCamera(camera="test")
-    module._get_cooling_status = AsyncMock(return_value=(True, 0.0, 30.0))  # type: ignore[method-assign]
-
-    await module.close()
-
-    assert seen == [pytest.approx(7.5 * 60 * 1.2 + 60)]  # 0 -> 15 degC at 2 degC/min
-
-
-@pytest.mark.asyncio
-async def test_close_keeps_a_given_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[float] = []
-
-    async def fake_close(self: CoolingRampMixin) -> None:
-        seen.append(self._cooling_close_timeout)
-
-    monkeypatch.setattr(CoolingRampMixin, "close", fake_close)
-    module = AsiCoolCamera(camera="test", cooling_close_timeout=10.0)
-    module._get_cooling_status = AsyncMock(return_value=(True, -20.0, 80.0))  # type: ignore[method-assign]
-
-    await module.close()
-
-    assert seen == [10.0]
 
 
 @pytest.mark.asyncio

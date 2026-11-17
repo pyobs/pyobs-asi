@@ -26,6 +26,7 @@
   "BitDepth": 16,
   "IsTriggerCam": 0
  },
+ "serial": "1d22d2002b020900",
  "sdk": "sdk/x64/libASICamera2.so",
  "controls": {
   "Gain": {

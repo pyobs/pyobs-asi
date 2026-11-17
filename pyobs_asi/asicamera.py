@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import math
 import threading
 import time
 from datetime import UTC, datetime
@@ -36,6 +35,7 @@ from pyobs.mixins import CoolingRampMixin
 from pyobs.modules.camera.basecamera import BaseCamera
 from pyobs.utils import exceptions as exc
 from pyobs.utils.enums import ExposureStatus, ImageFormat
+from pyobs.utils.frameheader import FrameSettings, make_frame_header
 
 from .blocking import BlockingSdkMixin
 from .presets import GAIN_GROUP, PRESETS, CameraPreset, detector_gain
@@ -57,13 +57,31 @@ _READOUT_TIMEOUT = 30.0
 _TEMPERATURE_READY_TIMEOUT = 5.0
 _TEMPERATURE_READY_POLL = 0.1
 
-# warm-up on close: the estimated time gets this factor and this many seconds on top
-_CLOSE_MARGIN_FACTOR = 1.2
-_CLOSE_MARGIN_SECONDS = 60.0
-
 # the exposure-wait loop's own timeout needs to cover the actual exposure time plus some margin
 # for overhead -- exposure_time alone would be too tight.
 _EXPOSURE_WAIT_MARGIN = 30.0
+
+
+def binned_roi(window: tuple[int, int, int, int], binning: int) -> tuple[int, int, int, int]:
+    """Converts a window in unbinned pixels to the ROI the SDK wants.
+
+    The SDK takes start and size in binned pixels, with a width that is a multiple of 8 and a height that is a
+    multiple of 2, so the window is shrunk to fit.
+
+    Args:
+        window: Left, top, width and height in unbinned pixels.
+        binning: Binning factor.
+
+    Returns:
+        Start x, start y, width and height in binned pixels.
+    """
+    left, top, width, height = (int(v) for v in window)
+    return left // binning, top // binning, max(8, width // binning // 8 * 8), max(2, height // binning // 2 * 2)
+
+
+def unbinned_window(roi: tuple[int, int, int, int], binning: int) -> tuple[int, int, int, int]:
+    """Converts an ROI in binned pixels, as the SDK reports it, to a window in unbinned pixels."""
+    return roi[0] * binning, roi[1] * binning, roi[2] * binning, roi[3] * binning
 
 
 class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, IGain, IMode, ITemperatures):
@@ -150,8 +168,14 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
 
             # get initial window and binning
             binning = self._camera.get_bin()
-            left, top, width, height = self._camera.get_roi()
-            return camera_info, binning, (left, top, width, height), self._camera.get_controls()
+            # the SDK reports the ROI in binned pixels, the window is in unbinned pixels
+            roi = self._camera.get_roi()
+            return (
+                camera_info,
+                binning,
+                unbinned_window((roi[0], roi[1], roi[2], roi[3]), binning),
+                self._camera.get_controls(),
+            )
 
         self._camera_info, self._binning, self._window, controls = await self._run_blocking_or_raise(
             _open, lock=self._sdk_lock
@@ -291,19 +315,21 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
 
         image_format = FORMATS[self._image_format]
 
-        # set window, divide width/height by binning
-        width = int(math.floor(self._window[2]) / self._binning)
-        height = int(math.floor(self._window[3]) / self._binning)
+        # the window is in unbinned pixels, the SDK wants the ROI in binned pixels
+        roi = binned_roi(self._window, self._binning)
+        window = unbinned_window(roi, self._binning)
         log.info(
-            "Set window to %dx%d (binned %dx%d with %dx%d) at %d,%d.",
-            self._window[2],
-            self._window[3],
-            width,
-            height,
+            "Set window to %dx%d at %d,%d (ROI %dx%d at %d,%d with %dx%d binning).",
+            window[2],
+            window[3],
+            window[0],
+            window[1],
+            roi[2],
+            roi[3],
+            roi[0],
+            roi[1],
             self._binning,
             self._binning,
-            self._window[0],
-            self._window[1],
         )
 
         log.info(
@@ -314,7 +340,7 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
         )
 
         def _start() -> None:
-            camera.set_roi(int(self._window[0]), int(self._window[1]), width, height, self._binning, image_format)
+            camera.set_roi(*roi, self._binning, image_format)
             # set status and exposure time in us
             camera.set_control_value(asi.ASI_EXPOSURE, int(exposure_time * 1e6))
             # set gain and offset
@@ -381,37 +407,29 @@ class AsiCamera(BlockingSdkMixin, BaseCamera, IWindow, IBinning, IImageFormat, I
             # i.e. we go from RGBRGBRGBRGBRGB to RRRRRGGGGGBBBBB
             data = np.moveaxis(data, 2, 0)
 
-        date_obs = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
-
         image = Image(cast(NDArray[Any], data))
-        image.header["DATE-OBS"] = (date_obs, "Date and time of start of exposure")
-        image.header["EXPTIME"] = (exposure_time, "Exposure time [s]")
-
-        image.header["INSTRUME"] = (self._camera_name, "Name of instrument")
-
-        image.header["XBINNING"] = image.header["DET-BIN1"] = (self._binning, "Binning factor used on X axis")
-        image.header["YBINNING"] = image.header["DET-BIN2"] = (self._binning, "Binning factor used on Y axis")
-
-        image.header["XORGSUBF"] = (self._window[0], "Subframe origin on X axis")
-        image.header["YORGSUBF"] = (self._window[1], "Subframe origin on Y axis")
-
-        image.header["DATAMIN"] = (float(np.min(data)), "Minimum data value")
-        image.header["DATAMAX"] = (float(np.max(data)), "Maximum data value")
-        image.header["DATAMEAN"] = (float(np.mean(data)), "Mean data value")
-
-        image.header["DET-PIXL"] = (self._camera_info["PixelSize"] / 1000.0, "Size of detector pixels (square) [mm]")
-        image.header["GAIN"] = (self._gain, "Gain used for exposure")
-        e_per_adu = detector_gain(self._preset, self._camera_info, self._gain)
-        if e_per_adu is not None:
-            image.header["DET-GAIN"] = (e_per_adu, "Detector gain [e-/ADU]")
-        image.header["OFFSET"] = (self._gain_offset, "Black-level offset used for exposure")
+        image.header.update(
+            make_frame_header(
+                FrameSettings(
+                    date_obs=datetime.now(UTC),
+                    exposure_time=exposure_time,
+                    instrument=self._camera_name,
+                    binning=(self._binning, self._binning),
+                    window=window,
+                    pixel_size=self._camera_info["PixelSize"] / 1000.0,
+                    gain=self._gain,
+                    e_per_adu=detector_gain(self._preset, self._camera_info, self._gain),
+                    offset=self._gain_offset,
+                    temperature=await self._get_temperature(),
+                    data=data,
+                )
+            )
+        )
 
         if image_format in [asi.ASI_IMG_RAW8, asi.ASI_IMG_RAW16]:
             image.header["BAYERPAT"] = image.header["COLORTYP"] = ("GBRG", "Bayer pattern for colors")
 
-        image.header["DET-TEMP"] = (await self._get_temperature(), "CCD temperature [C]")
-
-        self.set_biassec_trimsec(image.header, *self._window)
+        self.set_biassec_trimsec(image.header, *window)
 
         log.info("Readout finished.")
         return image
@@ -526,12 +544,11 @@ class AsiCoolCamera(CoolingRampMixin, AsiCamera, ICooling):
         CoolingRampMixin.__init__(
             self,
             cooling_warmup_on_close=cooling_warmup_on_close,
-            cooling_close_timeout=300.0 if cooling_close_timeout is None else cooling_close_timeout,
+            cooling_close_timeout=cooling_close_timeout,
             cooling_off_temperature=cooling_off_temperature,
             cooling_rate_warm=cooling_rate_warm,
             **kwargs,
         )
-        self._auto_close_timeout = cooling_close_timeout is None
         self._temp_setpoint = setpoint
 
     async def open(self) -> None:
@@ -540,25 +557,6 @@ class AsiCoolCamera(CoolingRampMixin, AsiCamera, ICooling):
 
         if not self._camera_info["IsCoolerCam"]:
             raise ValueError("Camera has no support for cooling.")
-
-    async def close(self) -> None:
-        """Close module, after warming up the sensor."""
-        if self._cooling_warmup_on_close and self._auto_close_timeout:
-            self._cooling_close_timeout = await self._estimated_close_timeout()
-        await super().close()
-
-    async def _estimated_close_timeout(self) -> float:
-        """Time in seconds that warming up from the current setpoint takes, plus a margin."""
-        rate = self._cooling_ramp.rate_warm
-        try:
-            enabled, setpoint, _ = await self._get_cooling_status()
-        except Exception:
-            log.warning("Could not read the cooler, using a close timeout of %.0fs.", self._cooling_close_timeout)
-            return self._cooling_close_timeout
-        if not enabled or rate is None:
-            return self._cooling_close_timeout
-        minutes = max(0.0, self._cooling_ramp.off_temperature - setpoint) / rate
-        return minutes * 60.0 * _CLOSE_MARGIN_FACTOR + _CLOSE_MARGIN_SECONDS
 
     async def full_reset(self, **kwargs: Any) -> None:
         """Reset the device completely, including cooling."""
@@ -577,8 +575,7 @@ class AsiCoolCamera(CoolingRampMixin, AsiCamera, ICooling):
         """Add cooling headers on top of AsiCamera's."""
         await super().add_custom_fits_headers(image)
         _, setpoint, power = await self._get_cooling_status()
-        image.header["DET-COOL"] = (int(power), "Cooler power [percent]")
-        image.header["DET-TSET"] = (setpoint, "Cooler setpoint [C]")
+        image.header.update(make_frame_header(FrameSettings(cooler_power=int(power), setpoint=setpoint)))
 
     async def _get_cooling_status(self) -> tuple[bool, float, float]:
         if self._camera is None:

@@ -35,8 +35,9 @@ class CameraPreset:
 
 # Keys are the camera names reported by the SDK.
 PRESETS: dict[str, CameraPreset] = {
-    # Measured with photon transfer at gains 0, 50, 100, 200 and 300 (see ASI2600MM_Pro.md): 0.783 e-/ADU at gain 0,
-    # read noise 3.5 e- and 50.9 ke full scale there, 1.4 e- and 16.6 ke at gain 100 (the HCG mode).
+    # Measured with photon transfer at gains 0, 50, 100, 200 and 300 (see characterization/ZWO_ASI2600MM_Pro/):
+    # 0.783 e-/ADU at gain 0, read noise 3.5 e- and 50.9 ke full scale there, 1.4 e- and 16.6 ke at gain 100 (the HCG
+    # mode).
     "ZWO ASI2600MM Pro": CameraPreset(
         modes={
             "Low noise": GainMode(gain=100, offset=50),

@@ -27,17 +27,21 @@ Steps (all with high speed mode off, on a central 2048x2048 window):
 * ``pixels``: temporal noise of every pixel from a stack of full-frame bias frames: the share of pixels with
   excess noise (random telegraph signal, "salt and pepper"), fixed offsets, and how many of the noisy ones flip between
   two levels. Use ``--target-temp`` to cool first, or ``--no-cooling`` for the warm sensor.
-* ``report``: plots and a Markdown report from the measured data.
+* ``report``: plots (in ``images/``) and a CSV file for every JSON lines file, from the measured data. Needs no camera.
 
-Results are appended to JSON lines files in the output folder, so a run can be repeated or resumed.
+Results are appended to JSON lines files in ``characterization/<model>/<serial number>/``, so a run can be repeated or
+resumed. See ``characterization/README.md``.
 """
 
 import argparse
+import csv
+import ctypes
 import json
 import math
 import sys
 import time
 from collections import deque
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -93,6 +97,7 @@ class Camera:
         self.cam = asi.Camera(0)
         self.info: dict[str, Any] = self.cam.get_camera_property()
         self.controls: dict[str, Any] = self.cam.get_controls()
+        self.serial = serial_number(self.cam)
         self.cam.disable_dark_subtract()
         self.cam.set_control_value(asi.ASI_HIGH_SPEED_MODE, 0)
         self.min_exposure_us = int(self.controls["Exposure"]["MinValue"])
@@ -139,6 +144,7 @@ class Output:
     def __init__(self, folder: Path) -> None:
         self.folder = folder
         (folder / "frames").mkdir(parents=True, exist_ok=True)
+        (folder / "images").mkdir(exist_ok=True)
 
     def write(self, name: str, record: dict[str, Any]) -> None:
         with open(self.folder / f"{name}.jsonl", "a") as f:
@@ -659,17 +665,62 @@ def fit_gain(records: list[dict[str, Any]], gain: int, weighted: bool = False) -
     }
 
 
-def make_report(out: Output, info: dict[str, Any]) -> None:
+def export_csv(folder: Path) -> list[Path]:
+    """Writes every JSON lines file in the folder as a CSV file of the same name.
+
+    Nested values are flattened into columns named ``<key>_<subkey>``, lists are joined with spaces, and a ``utc``
+    column is added in front if the records have a ``time``.
+    """
+
+    def flat(record: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in record.items():
+            if isinstance(value, dict):
+                out.update(flat(value, f"{prefix}{key}_"))
+            elif isinstance(value, list):
+                out[f"{prefix}{key}"] = " ".join(str(v) for v in value)
+            else:
+                out[f"{prefix}{key}"] = value
+        return out
+
+    written = []
+    for path in sorted(folder.glob("*.jsonl")):
+        rows = [flat(json.loads(line)) for line in path.read_text().splitlines() if line.strip()]
+        keys: list[str] = []
+        for row in rows:
+            if "time" in row:
+                row["utc"] = datetime.fromtimestamp(row["time"], UTC).strftime("%Y-%m-%dT%H:%M:%S")
+            keys += [k for k in row if k not in keys]
+        if "utc" in keys:
+            keys.remove("utc")
+            keys.insert(0, "utc")
+        csv_path = path.with_suffix(".csv")
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=keys)
+            writer.writeheader()
+            writer.writerows(rows)
+        written.append(csv_path)
+    return written
+
+
+def make_report(out: Output) -> None:
+    """Draws the plots into ``images/`` and writes the CSV files, from the measured data."""
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    folder = out.folder
-    lines = [f"# Characterization of {info.get('Name', 'ASI camera')}", ""]
+    images = out.folder / "images"
+    written: list[Path] = []
+
+    def save(fig: Any, name: str) -> None:
+        fig.savefig(images / name, dpi=110)
+        plt.close(fig)
+        written.append(images / name)
+
     bias, gain, temp = out.read("bias"), out.read("gain"), out.read("temperature")
     temp = [r for r in temp if "bias_noise_adu" in r]
-    short, readout = out.read("short"), out.read("readout")
+    short = out.read("short")
 
     if bias:
         offsets = sorted({r["offset"] for r in bias})
@@ -687,24 +738,10 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
         axs[1].set_yscale("log")
         axs[0].legend()
         fig.tight_layout()
-        fig.savefig(folder / "bias.png", dpi=110)
-        lines += ["## Bias vs gain and offset", "", "![bias](bias.png)", ""]
-        lines += ["| gain | offset | bias [ADU] | read noise [ADU] | clipped |", "|---|---|---|---|---|"]
-        for r in bias:
-            lines.append(
-                f"| {r['gain']} | {r['offset']} | {r['mean']:.1f} | {r['noise_std_adu']:.2f} | "
-                f"{r['clipped_frac']:.4f} |"
-            )
-        lines.append("")
+        save(fig, "bias.png")
 
     if gain:
         fig, ax = plt.subplots(figsize=(6, 4.5))
-        lines += [
-            "## Gain from dark-current shot noise",
-            "",
-            "| gain | e-/ADU | ADU/e- | slope error | read noise [ADU] |",
-        ]
-        lines += ["|---|---|---|---|---|"]
         for g in sorted({r["gain"] for r in gain}):
             rows = [r for r in gain if r["gain"] == g]
             s = [r["signal_adu"] for r in rows]
@@ -713,32 +750,16 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
             if fit:
                 xs = np.linspace(0, max(s), 20)
                 ax.plot(xs, fit["adu_per_e"] * xs + fit["read_noise_adu"] ** 2, "-", alpha=0.5)
-                lines.append(
-                    f"| {g} | {fit['e_per_adu']:.3f} | {fit['adu_per_e']:.3f} | {fit['slope_err']:.3f} | "
-                    f"{fit['read_noise_adu']:.2f} |"
-                )
         ax.set_xlabel("dark signal [ADU]")
         ax.set_ylabel("noise variance of one frame [ADU^2]")
         ax.legend()
         ax.grid(alpha=0.3)
         fig.tight_layout()
-        fig.savefig(folder / "gain.png", dpi=110)
-        lines += ["", "![gain](gain.png)", ""]
-        lines.append(f"SDK value at open: ElecPerADU = {info.get('ElecPerADU')}")
-        lines.append("")
+        save(fig, "gain.png")
 
     flat = out.read("flat")
     if flat:
         fig, axs = plt.subplots(1, 2, figsize=(12, 4.5))
-        lines += [
-            "## Photon transfer from a light source",
-            "",
-            f"Fit below {FIT_MAX_FRACTION:.0%} of full scale, central {CUTOUT}x{CUTOUT} pixels, pairs of frames.",
-            "",
-            "| gain | e-/ADU | ADU/e- | slope error | read noise [ADU] | read noise [e-] | full scale [e-] | "
-            "max nonlinearity [%] |",
-            "|---|---|---|---|---|---|---|---|",
-        ]
         for g in sorted({r["gain"] for r in flat}):
             rows = [r for r in flat if r["gain"] == g]
             good = [r for r in rows if r["sat_frac"] == 0 and 0 < r["signal_adu"] <= FIT_MAX_FRACTION * FULL_SCALE]
@@ -755,14 +776,6 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
             axs[0].loglog(
                 xs, fit["adu_per_e"] * xs + fit["read_noise_adu"] ** 2, "-", color=line.get_color(), alpha=0.5
             )
-            bias = rows[0]["bias_fit"]
-            nonlin = max(abs(r["nonlin_pct"]) for r in good)
-            err = fit["slope_err"] / fit["adu_per_e"]
-            lines.append(
-                f"| {g} | {fit['e_per_adu']:.3f} | {fit['adu_per_e']:.3f} | {err:.1%} | "
-                f"{fit['read_noise_adu']:.2f} | {fit['read_noise_adu'] * fit['e_per_adu']:.2f} | "
-                f"{(FULL_SCALE - bias) * fit['e_per_adu']:.0f} | {nonlin:.2f} |"
-            )
         axs[0].set_xlabel("signal [ADU]")
         axs[0].set_ylabel("noise variance of one frame [ADU^2]")
         axs[1].set_xlabel("signal [ADU]")
@@ -771,8 +784,7 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
             ax.grid(alpha=0.3)
         axs[0].legend()
         fig.tight_layout()
-        fig.savefig(folder / "flat.png", dpi=110)
-        lines += ["", "![flat](flat.png)", ""]
+        save(fig, "flat.png")
 
     if temp:
         fig, axs = plt.subplots(1, 3, figsize=(15, 4))
@@ -797,16 +809,7 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
             ax.grid(alpha=0.3)
         axs[1].legend()
         fig.tight_layout()
-        fig.savefig(folder / "temperature.png", dpi=110)
-        lines += ["## Noise and dark current vs temperature", "", "![temperature](temperature.png)", ""]
-        lines += ["| T [degC] | exposure [s] | bias [ADU] | read noise [ADU] | dark [ADU/s] mean | hot fraction |"]
-        lines += ["|---|---|---|---|---|---|"]
-        for r in temp:
-            lines.append(
-                f"| {r['temp']:.1f} | {r['exposure']:.0f} | {r['bias_mean']:.2f} | {r['bias_noise_adu']:.2f} | "
-                f"{r['dark_adu_per_s_mean']:.5f} | {r['hot_frac']:.5f} |"
-            )
-        lines.append("")
+        save(fig, "temperature.png")
 
     if short:
         rows = [r for r in short if r["exposure"] >= SHORT_FIT_MIN_S]
@@ -814,26 +817,9 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
         level = np.array([r["level"] for r in short])
         rate, level0 = np.polyfit([r["exposure"] for r in rows], [r["level"] for r in rows], 1)
         # bias of the same gain and offset from the bias step, if there is one
-        match = [
-            b["mean"] for b in out.read("bias") if b["gain"] == short[0]["gain"] and b["offset"] == short[0]["offset"]
-        ]
-        lines += [
-            "## Short exposures",
-            "",
-            f"Level of the central window vs. exposure time (gain {short[0]['gain']}, offset {short[0]['offset']}), "
-            f"{SHORT_FRAMES} frames per point. Line fitted from {SHORT_FIT_MIN_S * 1000:.0f} ms on: "
-            f"{rate:.0f} ADU/s, level {level0:.1f} ADU at zero exposure.",
-        ]
+        match = [b["mean"] for b in bias if b["gain"] == short[0]["gain"] and b["offset"] == short[0]["offset"]]
         if match:
-            lines.append(
-                f"The bias frame level is {match[0]:.1f} ADU, so the line corresponds to an exposure offset of "
-                f"{(level0 - match[0]) / rate * 1e6:+.0f} us."
-            )
-        lines += ["", "| exposure [ms] | level [ADU] | std of frames [ADU] | deviation from the line [us] |"]
-        lines += ["|---|---|---|---|"]
-        for r in short:
-            dev = (r["level"] - (level0 + rate * r["exposure"])) / rate * 1e6
-            lines.append(f"| {r['exposure'] * 1000:.3f} | {r['level']:.1f} | {r['level_std']:.2f} | {dev:+.0f} |")
+            print(f"Short exposures: exposure offset {(level0 - match[0]) / rate * 1e6:+.0f} us")
         fig, ax = plt.subplots(figsize=(6, 4.5))
         ax.loglog(t * 1000, level - (match[0] if match else level0), "o-", label="measured")
         ax.loglog(t * 1000, rate * t + level0 - (match[0] if match else level0), "--", label="line from >= 1 ms")
@@ -842,37 +828,46 @@ def make_report(out: Output, info: dict[str, Any]) -> None:
         ax.grid(alpha=0.3, which="both")
         ax.legend()
         fig.tight_layout()
-        fig.savefig(folder / "short.png", dpi=110)
-        lines += ["", "![short](short.png)", ""]
+        save(fig, "short.png")
 
-    if readout:
-        lines += [
-            "## Readout",
-            "",
-            "Full frame at the minimum exposure. Frame time is from the start of the exposure until the camera reports "
-            "it done, the download is the copy of the data afterwards. Noise is from a pair of frames on a central "
-            f"{CUTOUT}x{CUTOUT} window of the binned image; for RAW8 it is dominated by rounding.",
-            "",
-            "| high speed | bin | type | size | frame time [s] | download [s] | noise [ADU] |",
-            "|---|---|---|---|---|---|---|",
-        ]
-        for r in readout:
-            noise = "" if r["noise_adu"] is None else f"{r['noise_adu']:.2f}"
-            lines.append(
-                f"| {r['high_speed']} | {r['bins']} | {r['type']} | {r['width']}x{r['height']} | "
-                f"{r['exposure_s']:.3f} | {r['download_s']:.3f} | {noise} |"
-            )
-        lines.append("")
+    written += export_csv(out.folder)
+    for path in written:
+        print(f"Wrote {path}")
 
-    (folder / "report.md").write_text("\n".join(lines))
-    print(f"Wrote {folder / 'report.md'}")
+
+def serial_number(camera: asi.Camera) -> str | None:
+    """Serial number of the camera as ZWO's software shows it (16 hex digits), None if it cannot be read.
+
+    zwoasi does not wrap ``ASIGetSerialNumber``, so it is called through ctypes.
+    """
+
+    class _SerialNumber(ctypes.Structure):
+        _fields_ = [("id", ctypes.c_ubyte * 8)]
+
+    func = getattr(asi.zwolib, "ASIGetSerialNumber", None)
+    if func is None:
+        return None
+    sn = _SerialNumber()
+    if func(camera.id, ctypes.byref(sn)) != 0:
+        return None
+    return "".join(f"{b:02x}" for b in sn.id)
+
+
+def find_report_folder(root: Path) -> Path:
+    """The single unit folder (``<model>/<serial number>``) below ``root`` that has a ``meta.json``."""
+    folders = sorted(p.parent for p in root.glob("*/*/meta.json"))
+    if len(folders) != 1:
+        found = ", ".join(str(f) for f in folders) or "none"
+        raise SystemExit(f"Expected exactly one camera folder in {root}, found: {found}. Use --folder.")
+    return folders[0]
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("step", choices=["bias", "gain", "temperature", "flat", "short", "readout", "pixels", "report"])
     parser.add_argument("--sdk", default="sdk/x64/libASICamera2.so")
-    parser.add_argument("--out", default="characterization")
+    parser.add_argument("--out", default="characterization", help="root folder, results go to <out>/<model>/<serial>")
+    parser.add_argument("--folder", type=Path, help="unit folder for the report step, if there is more than one")
     parser.add_argument("--gains", type=int, nargs="+", help="gains for the bias or gain step")
     parser.add_argument("--offsets", type=int, nargs="+", help="offsets for the bias step")
     parser.add_argument("--exposures", type=float, nargs="+", help="exposure times in s for the gain step")
@@ -888,17 +883,18 @@ def main() -> None:
 
     if args.step == "report":
         # no camera needed, use the saved data
-        folders = [f for f in Path(args.out).iterdir() if (f / "meta.json").exists()]
-        if len(folders) != 1:
-            raise SystemExit(f"Expected exactly one camera folder in {args.out}, found {len(folders)}.")
-        info = json.loads((folders[0] / "meta.json").read_text())["info"]
-        make_report(Output(folders[0]), info)
+        make_report(Output(args.folder or find_report_folder(Path(args.out))))
         return
 
     cam = Camera(args.sdk)
     name = str(cam.info["Name"]).replace(" ", "_")
-    out = Output(Path(args.out) / name)
-    meta = {"info": {k: v for k, v in cam.info.items()}, "sdk": cam.sdk, "controls": cam.controls}
+    out = Output(Path(args.out) / name / (cam.serial or "unknown_serial"))
+    meta = {
+        "info": {k: v for k, v in cam.info.items()},
+        "serial": cam.serial,
+        "sdk": cam.sdk,
+        "controls": cam.controls,
+    }
     (out.folder / "meta.json").write_text(json.dumps(meta, indent=1, default=str))
 
     try:
